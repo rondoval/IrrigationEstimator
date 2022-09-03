@@ -24,7 +24,6 @@ from homeassistant.const import (
 from .OWMClient import OWMClient
 from .const import (
     CONF_API_KEY,
-    CONF_REFERENCE_ET,
     CONF_NUMBER_OF_SPRINKLERS,
     CONF_FLOW,
     CONF_AREA,
@@ -68,7 +67,6 @@ from .const import (
     DEFAULT_ESTIMATE_SOLRAD_FROM_TEMP,
     CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_ET,
-    CONF_SWITCH_CALCULATE_ET,
 )
 
 from .helpers import average_of_list, last_of_list
@@ -77,7 +75,6 @@ from .helpers import average_of_list, last_of_list
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=58)
-# SCAN_INTERVAL = timedelta(minutes=5)
 
 PLATFORMS = ["sensor"]
 
@@ -96,8 +93,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     area = entry.data.get(CONF_AREA)
     flow = entry.data.get(CONF_FLOW)
     number_of_sprinklers = entry.data.get(CONF_NUMBER_OF_SPRINKLERS)
-    reference_et = entry.data.get(CONF_REFERENCE_ET)
-    reference_et = [float(x) for x in reference_et]
     sensors = entry.data.get(CONF_SENSORS)
     _LOGGER.info("{} sensors: {}".format(entry.title, sensors))
     # convert values to internal metric representation if required.
@@ -110,12 +105,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if system_of_measurement == SETTING_US:
         flow = flow / LITER_TO_GALLON_FACTOR
         area = area / M2_TO_SQ_FT_FACTOR
-        reference_et = [x / MM_TO_INCH_FACTOR for x in reference_et]
 
-    peak_et = max(reference_et)
     throughput = number_of_sprinklers * flow
     precipitation_rate = (throughput * 60) / area
-    base_schedule_index = (peak_et / precipitation_rate * 60) * 60  # in seconds
     latitude = hass.config.as_dict().get(CONF_LATITUDE)
     longitude = hass.config.as_dict().get(CONF_LONGITUDE)
     elevation = hass.config.as_dict().get(CONF_ELEVATION)
@@ -125,7 +117,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # handle options: lead time, change_percent, max duration, force_mode_duration, show units, auto refresh, auto refresh time
     lead_time = entry.options.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)
-    change_percent = entry.options.get(CONF_CHANGE_PERCENT, DEFAULT_CHANGE_PERCENT)
     maximum_duration = entry.options.get(
         CONF_MAXIMUM_DURATION, DEFAULT_MAXIMUM_DURATION
     )
@@ -156,11 +147,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         area=area,
         flow=flow,
         number_of_sprinklers=number_of_sprinklers,
-        reference_et=reference_et,
-        peak_et=peak_et,
         throughput=throughput,
         precipitation_rate=precipitation_rate,
-        base_schedule_index=base_schedule_index,
         lead_time=lead_time,
         maximum_duration=maximum_duration,
         force_mode_duration=force_mode_duration,
@@ -168,7 +156,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         auto_refresh=auto_refresh,
         auto_refresh_time=auto_refresh_time,
         sensors=sensors,
-        change_percent=change_percent,
         initial_update_delay=initial_update_delay,
         coastal=coastal,
         estimate_solrad_from_temp=estimate_solrad_from_temp,
@@ -262,11 +249,8 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         area,
         flow,
         number_of_sprinklers,
-        reference_et,
-        peak_et,
         throughput,
         precipitation_rate,
-        base_schedule_index,
         lead_time,
         maximum_duration,
         force_mode_duration,
@@ -274,7 +258,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         auto_refresh,
         auto_refresh_time,
         sensors,
-        change_percent,
         initial_update_delay,
         coastal,
         estimate_solrad_from_temp,
@@ -294,13 +277,9 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.area = area
         self.flow = flow
         self.number_of_sprinklers = number_of_sprinklers
-        self.reference_et = reference_et
-        self.peak_et = peak_et
         self.throughput = throughput
         self.precipitation_rate = precipitation_rate
-        self.base_schedule_index = base_schedule_index
         self.lead_time = lead_time
-        self.change_percent = float(change_percent)
         self.maximum_duration = maximum_duration
         self.force_mode_duration = force_mode_duration
         # initialize force mode as Off
@@ -521,8 +500,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
             await self.hass.async_add_executor_job(self.api.get_data)
         self._update_last_of_day()
         _LOGGER.info("Bucket for today is: %s mm", self.bucket)
-        # don't think this is necessary any more.
-        # return data
 
     async def _async_initial_update(self, *args):
         """Start initial update."""

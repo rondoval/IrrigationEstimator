@@ -64,24 +64,6 @@
           "api_key": "API key for Open Weather Map"
         }
       },
-      "step4": {
-        "title": "Smart Irrigation - Step 6/7: Reference evapotranspiration values",
-        "description": "If you need help with the configuration, please see https://github.com/jeroenterheerdt/HASmartIrrigation",
-        "data": {
-          "reference_evapotranspiration_1": "Reference evapotranspiration for January",
-          "reference_evapotranspiration_2": "Reference evapotranspiration for February",
-          "reference_evapotranspiration_3": "Reference evapotranspiration for March",
-          "reference_evapotranspiration_4": "Reference evapotranspiration for April",
-          "reference_evapotranspiration_5": "Reference evapotranspiration for May",
-          "reference_evapotranspiration_6": "Reference evapotranspiration for June",
-          "reference_evapotranspiration_7": "Reference evapotranspiration for July",
-          "reference_evapotranspiration_8": "Reference evapotranspiration for August",
-          "reference_evapotranspiration_9": "Reference evapotranspiration for September",
-          "reference_evapotranspiration_10": "Reference evapotranspiration for October",
-          "reference_evapotranspiration_11": "Reference evapotranspiration for November",
-          "reference_evapotranspiration_12": "Reference evapotranspiration for December"
-        }
-      },
       "step5": {
         "title": "Smart Irrigation - Step 7/7: Irrigation system configuration",
         "description": "If you need help with the configuration, please see https://github.com/jeroenterheerdt/HASmartIrrigation",

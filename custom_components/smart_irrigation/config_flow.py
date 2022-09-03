@@ -3,24 +3,10 @@ from .OWMClient import OWMClient
 from .helpers import (
     map_source_to_sensor,
     check_all,
-    check_reference_et,
     check_time,
 )
 from .const import (  # pylint: disable=unused-import
     CONF_API_KEY,
-    CONF_REFERENCE_ET,
-    CONF_REFERENCE_ET_1,
-    CONF_REFERENCE_ET_2,
-    CONF_REFERENCE_ET_3,
-    CONF_REFERENCE_ET_4,
-    CONF_REFERENCE_ET_5,
-    CONF_REFERENCE_ET_6,
-    CONF_REFERENCE_ET_7,
-    CONF_REFERENCE_ET_8,
-    CONF_REFERENCE_ET_9,
-    CONF_REFERENCE_ET_10,
-    CONF_REFERENCE_ET_11,
-    CONF_REFERENCE_ET_12,
     CONF_NUMBER_OF_SPRINKLERS,
     CONF_FLOW,
     CONF_AREA,
@@ -52,7 +38,6 @@ from .const import (  # pylint: disable=unused-import
     CONF_INITIAL_UPDATE_DELAY,
     DEFAULT_INITIAL_UPDATE_DELAY,
     DOMAIN,
-    DEFAULT_REFERENCE_ET,
     CONF_COASTAL,
     DEFAULT_COASTAL,
     CONF_ESTIMATE_SOLRAD_FROM_TEMP,
@@ -309,87 +294,12 @@ class SmartIrrigationConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN)
             try:
                 await self._test_api_key(user_input[CONF_API_KEY])
                 self._api_key = user_input[CONF_API_KEY].strip()
-                return await self._show_step4(user_input)
+                return await self._show_step5(user_input)
             except InvalidAuth:
                 self._errors["base"] = "auth"
             except CannotConnect:
                 self._errors["base"] = "auth"
         return await self._show_step3(user_input)
-
-    async def _show_step4(self, user_input):
-        """Show the configuration form step 4: reference ET values."""
-        return self.async_show_form(
-            step_id="step4",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_REFERENCE_ET_1, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_2, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_3, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_4, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_5, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_6, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_7, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_8, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_9, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_10, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_11, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        CONF_REFERENCE_ET_12, default=DEFAULT_REFERENCE_ET
-                    ): vol.Coerce(float),
-                }
-            ),
-            errors=self._errors,
-        )
-
-    async def async_step_step4(self, user_input=None):
-        """Handle a flow step4."""
-        self._errors = {}
-
-        if user_input is not None:
-            reference_et = [
-                user_input[CONF_REFERENCE_ET_1],
-                user_input[CONF_REFERENCE_ET_2],
-                user_input[CONF_REFERENCE_ET_3],
-                user_input[CONF_REFERENCE_ET_4],
-                user_input[CONF_REFERENCE_ET_5],
-                user_input[CONF_REFERENCE_ET_6],
-                user_input[CONF_REFERENCE_ET_7],
-                user_input[CONF_REFERENCE_ET_8],
-                user_input[CONF_REFERENCE_ET_9],
-                user_input[CONF_REFERENCE_ET_10],
-                user_input[CONF_REFERENCE_ET_11],
-                user_input[CONF_REFERENCE_ET_12],
-            ]
-            valid_et = check_reference_et(reference_et)
-            if valid_et:
-                # store entered values
-                self._reference_et = reference_et
-                # show next step
-                return await self._show_step5(user_input)
-            self._errors["base"] = "reference_evapotranspiration_problem"
-        return await self._show_step4(user_input)
 
     async def async_step_step5(self, user_input=None):
         """Handle a flow step5."""

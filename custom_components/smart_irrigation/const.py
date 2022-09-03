@@ -16,19 +16,6 @@ PLATFORMS = [SENSOR]
 
 # Configuration and options
 CONF_API_KEY = "api_key"
-CONF_REFERENCE_ET = "reference_evapotranspiration"
-CONF_REFERENCE_ET_1 = "reference_evapotranspiration_1"
-CONF_REFERENCE_ET_2 = "reference_evapotranspiration_2"
-CONF_REFERENCE_ET_3 = "reference_evapotranspiration_3"
-CONF_REFERENCE_ET_4 = "reference_evapotranspiration_4"
-CONF_REFERENCE_ET_5 = "reference_evapotranspiration_5"
-CONF_REFERENCE_ET_6 = "reference_evapotranspiration_6"
-CONF_REFERENCE_ET_7 = "reference_evapotranspiration_7"
-CONF_REFERENCE_ET_8 = "reference_evapotranspiration_8"
-CONF_REFERENCE_ET_9 = "reference_evapotranspiration_9"
-CONF_REFERENCE_ET_10 = "reference_evapotranspiration_10"
-CONF_REFERENCE_ET_11 = "reference_evapotranspiration_11"
-CONF_REFERENCE_ET_12 = "reference_evapotranspiration_12"
 CONF_NUMBER_OF_SPRINKLERS = "number_of_sprinklers"
 CONF_FLOW = "flow"
 CONF_AREA = "area"
@@ -157,7 +144,6 @@ DEFAULT_AUTO_REFRESH = True  # bool
 DEFAULT_AUTO_REFRESH_TIME = "23:00"  # time
 DEFAULT_CHANGE_PERCENT = 1  # % so this really represents 100%
 DEFAULT_INITIAL_UPDATE_DELAY = 300  # seconds, 5 minutes
-DEFAULT_REFERENCE_ET = 0.0
 DEFAULT_COASTAL = False  # bool
 DEFAULT_ESTIMATE_SOLRAD_FROM_TEMP = True  # bool
 

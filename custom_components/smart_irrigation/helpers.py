@@ -121,16 +121,6 @@ def show_m2_or_sq_ft(value, som, show_units):
     return retval
 
 
-def show_percentage(value, show_units):
-    """Return nicely formatted percentages."""
-    if value is None:
-        return "unknown"
-    retval = round(float(value) * 100.0, 2)
-    if show_units:
-        return f"{retval} %"
-    return retval
-
-
 def show_seconds(value, show_units):
     """Return nicely formatted seconds."""
     if value is None:
@@ -188,31 +178,6 @@ def check_all(settings, boolval):
             retval = False
             break
     return retval
-
-
-def reset_to(settings, boolval):
-    """Reset all values in the dictionary to the specified bool value."""
-    for setting in settings:
-        settings[setting] = boolval
-    return settings
-
-
-def check_reference_et(reference_et):
-    """Check reference et values here."""
-    try:
-        if len(reference_et) != 12:
-            return False
-        all_floats = True
-        for ref in reference_et:
-            if not isinstance(ref, float):
-                all_floats = False
-                break
-        # test that max > 0
-        if all_floats and max(reference_et) == 0:
-            return False
-        return all_floats
-    except Exception:  # pylint: disable=broad-except
-        return False
 
 
 def check_time(itime):

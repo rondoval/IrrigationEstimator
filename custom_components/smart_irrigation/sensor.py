@@ -7,7 +7,6 @@ from homeassistant.core import callback, Event
 from homeassistant.helpers.event import async_track_point_in_time
 
 from .helpers import (
-    show_percentage,
     show_mm_or_inch,
     show_seconds,
     show_minutes,
@@ -31,15 +30,12 @@ from .const import (  # pylint: disable=unused-import
     CONF_FLOW,
     CONF_THROUGHPUT,
     SETTING_METRIC,
-    CONF_REFERENCE_ET,
     MM_TO_INCH_FACTOR,
-    CONF_PEAK_ET,
     CONF_AREA,
     CONF_PRECIPITATION_RATE,
     CONF_PRECIPITATION,
     CONF_NETTO_PRECIPITATION,
     CONF_EVAPOTRANSPIRATION,
-    CONF_WATER_BUDGET,
     CONF_RAIN,
     CONF_SNOW,
     CONF_BUCKET,
@@ -47,7 +43,6 @@ from .const import (  # pylint: disable=unused-import
     CONF_LEAD_TIME,
     CONF_MAXIMUM_DURATION,
     CONF_ADJUSTED_RUN_TIME_MINUTES,
-    CONF_BASE_SCHEDULE_INDEX_MINUTES,
     EVENT_HOURLY_DATA_UPDATED,
     CONF_AUTO_REFRESH,
     CONF_AUTO_REFRESH_TIME,
@@ -91,9 +86,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     async_add_devices(
         [
             SmartIrrigationSensor(hass, coordinator, entry, TYPE_BASE_SCHEDULE_INDEX),
-            SmartIrrigationSensor(
-                hass, coordinator, entry, TYPE_CURRENT_ADJUSTED_RUN_TIME
-            ),
+            SmartIrrigationSensor(hass, coordinator, entry, TYPE_CURRENT_ADJUSTED_RUN_TIME),
             SmartIrrigationSensor(hass, coordinator, entry, TYPE_ADJUSTED_RUN_TIME),
         ]
     )
@@ -112,7 +105,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             self.rain = 0.0
             self.snow = 0.0
             self.evapotranspiration = 0.0
-            self.water_budget = 0.0
             self.bucket_delta = 0
             _LOGGER.info(
                 "sensor __init__ for current_adjusted_run_time. bucket_delta=0"
@@ -170,7 +162,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                 CONF_PRECIPITATION,
                 CONF_RAIN,
                 CONF_SNOW,
-                CONF_WATER_BUDGET,
                 CONF_BUCKET,
                 CONF_ADJUSTED_RUN_TIME_MINUTES,
             )
@@ -233,14 +224,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                                         self.bucket
                                     )
                                 )
-                        elif attr in (
-                            CONF_WATER_BUDGET,
-                            CONF_ADJUSTED_RUN_TIME_MINUTES,
-                        ):
-                            # no need for conversion here
-                            if attr == CONF_WATER_BUDGET:
-                                self.water_budget = numeric_part
-                            # no need to store adjusted run time minutes
                         # set the attribute
                         setattr(self, attr, f"{numeric_part}")
 
@@ -259,11 +242,9 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             )
         )
         art_entity_id = self.coordinator.entities[TYPE_ADJUSTED_RUN_TIME]
-        attr = self.get_attributes_for_daily_adjusted_run_time(
-            self.bucket, result["wb"], result["art"]
-        )
+        attr = self.get_attributes_for_daily_adjusted_run_time(self.bucket, result)
         self.hass.states.set(
-            art_entity_id, result["art"], attr,
+            art_entity_id, result, attr,
         )
 
         # make sure to fire the 'we need to start irrigation now' event in time so we finish just before sunrise
@@ -321,12 +302,9 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
         """Return the name of the sensor."""
         return f"{self.type}"
 
-    def get_attributes_for_daily_adjusted_run_time(self, bucket, water_budget, art):
+    def get_attributes_for_daily_adjusted_run_time(self, bucket, art):
         """Return the attributes for daily_adjusted_run_time."""
         return {
-            CONF_WATER_BUDGET: show_percentage(
-                water_budget, self.coordinator.show_units
-            ),
             CONF_BUCKET: show_mm_or_inch(
                 bucket,
                 self.coordinator.system_of_measurement,
@@ -335,10 +313,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             CONF_LEAD_TIME: show_seconds(
                 self.coordinator.lead_time, self.coordinator.show_units,
             ),
-            # DISABLED : CHANGE_PERCENT has been disabled in v0.0.40 onwards since it introduced bugs.
-            # CONF_CHANGE_PERCENT: show_percentage(
-            #     self.coordinator.change_percent, self.coordinator.show_units,
-            # ),
             CONF_MAXIMUM_DURATION: show_seconds(
                 self.coordinator.maximum_duration, self.coordinator.show_units
             ),
@@ -526,7 +500,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             result = self.calculate_water_budget_and_adjusted_run_time(
                 self.bucket_delta, self.type
             )
-            self.water_budget = result["wb"]
             self.coordinator.hourly_precipitation_list.append(self.precipitation)
             self.coordinator.hourly_evapotranspiration_list.append(
                 self.evapotranspiration
@@ -537,7 +510,7 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     self.coordinator.hourly_evapotranspiration_list,
                 )
             )
-            return result["art"]
+            return result
         # daily adjusted run time
 
         result = self.calculate_water_budget_and_adjusted_run_time(
@@ -548,8 +521,7 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                 result
             )
         )
-        self.water_budget = result["wb"]
-        return result["art"]
+        return result
 
     @property
     def state(self):
@@ -578,16 +550,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     self.coordinator.system_of_measurement,
                     self.coordinator.show_units,
                 ),
-                CONF_REFERENCE_ET: show_mm_or_inch(
-                    self.coordinator.reference_et,
-                    self.coordinator.system_of_measurement,
-                    self.coordinator.show_units,
-                ),
-                CONF_PEAK_ET: show_mm_or_inch(
-                    self.coordinator.peak_et,
-                    self.coordinator.system_of_measurement,
-                    self.coordinator.show_units,
-                ),
                 CONF_AREA: show_m2_or_sq_ft(
                     self.coordinator.area,
                     self.coordinator.system_of_measurement,
@@ -597,9 +559,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     self.coordinator.precipitation_rate,
                     self.coordinator.system_of_measurement,
                     self.coordinator.show_units,
-                ),
-                CONF_BASE_SCHEDULE_INDEX_MINUTES: show_minutes(
-                    self.state, self.coordinator.show_units
                 ),
                 CONF_AUTO_REFRESH: self.coordinator.auto_refresh,
                 CONF_AUTO_REFRESH_TIME: self.coordinator.auto_refresh_time,
@@ -636,15 +595,12 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     self.coordinator.system_of_measurement,
                     self.coordinator.show_units,
                 ),
-                CONF_WATER_BUDGET: show_percentage(
-                    self.water_budget, self.coordinator.show_units
-                ),
                 CONF_ADJUSTED_RUN_TIME_MINUTES: show_minutes(
                     self.state, self.coordinator.show_units
                 ),
             }
         return self.get_attributes_for_daily_adjusted_run_time(
-            self.bucket, self.water_budget, self.state
+            self.bucket, self.state
         )
 
     @property
@@ -723,11 +679,9 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
 
     def calculate_water_budget_and_adjusted_run_time(self, bucket_val, thetype):
         """Calculate water budget and adjusted run time based on bucket_val."""
-        water_budget = 0
         adjusted_run_time = 0
         # if force_mode is on just return the force mode duration but only for the daily adjusted run time
         if self.coordinator.force_mode and thetype == TYPE_ADJUSTED_RUN_TIME:
-            water_budget = 1
             adjusted_run_time = self.coordinator.force_mode_duration
         else:
             if (
@@ -735,29 +689,14 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                 or isinstance(bucket_val, str)
                 or (isinstance(bucket_val, (float, int)) and bucket_val >= 0)
             ):
-                # we do not need to irrigate
-                water_budget = 0
                 # return 0 for adjusted runtime
                 adjusted_run_time = 0
             else:
                 # we need to irrigate
-                water_budget = abs(bucket_val) / self.coordinator.peak_et
-                # return adjusted runtime for hourly adjusted run time
-                if thetype == TYPE_CURRENT_ADJUSTED_RUN_TIME:
-                    adjusted_run_time = round(
-                        water_budget * self.coordinator.base_schedule_index
-                    )
-                elif thetype == TYPE_ADJUSTED_RUN_TIME:
+                adjusted_run_time = abs(bucket_val)/self.coordinator.precipitation_rate
+                if thetype == TYPE_ADJUSTED_RUN_TIME:
                     # make adjustments just for daily: lead_time, change percent and maximum_duration
-                    adjusted_run_time = (
-                        round(water_budget * self.coordinator.base_schedule_index)
-                        + self.coordinator.lead_time
-                    )
-                    # DISABLED : CHANGE_PERCENT has been disabled in v0.0.40 onwards since it introduced bugs.
-                    # # change_percent. default == 1, so this will have no effect.
-                    # adjusted_run_time = float(
-                    #     adjusted_run_time * self.coordinator.change_percent
-                    # )
+                    adjusted_run_time += self.coordinator.lead_time
                     # adjusted run time is capped at maximum duration (if not -1)
                     if (
                         self.coordinator.maximum_duration != -1
@@ -765,12 +704,10 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     ):
                         adjusted_run_time = self.coordinator.maximum_duration
         _LOGGER.info(
-            "Calculated water_budget = {} and adjusted_run_time: {} for type: {}. Bucket value was: {}, and base schedule index is: {}, force mode is: {}, force mode duration is: {}, lead_time is: {}, maximum_duration: {}, change percentage: {}, type: {}".format(  # pylint: disable=logging-format-interpolation
-                water_budget,
+            "Calculated adjusted_run_time: {} for type: {}. Bucket value was: {}, force mode is: {}, force mode duration is: {}, lead_time is: {}, maximum_duration: {}, change percentage: {}, type: {}".format(  # pylint: disable=logging-format-interpolation
                 adjusted_run_time,
                 thetype,
                 bucket_val,
-                self.coordinator.base_schedule_index,
                 self.coordinator.force_mode,
                 self.coordinator.force_mode_duration,
                 self.coordinator.lead_time,
@@ -779,4 +716,4 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                 self.type,
             )
         )
-        return {"wb": water_budget, "art": adjusted_run_time}
+        return adjusted_run_time
