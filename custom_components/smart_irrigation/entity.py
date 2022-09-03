@@ -13,7 +13,8 @@ class SmartIrrigationEntity(RestoreEntity):
         self.coordinator = coordinator
         self.config_entry = config_entry
         self.type = mytype
-        self.entity_id = f"sensor.{coordinator.name}_{mytype.replace(' ','_')}".lower()
+        self.entity_id = \
+            f"sensor.{coordinator.name}_{mytype.replace(' ','_')}".lower()
 
     @property
     def should_poll(self):

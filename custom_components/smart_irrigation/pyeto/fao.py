@@ -143,9 +143,9 @@ def avp_from_twet_tdry(twet, tdry, svp_twet, psy_const):
     Estimate actual vapour pressure (*ea*) from wet and dry bulb temperature.
 
     Based on equation 15 in Allen et al (1998). As the dewpoint temperature
-    is the temperature to which air needs to be cooled to make it saturated, the
-    actual vapour pressure is the saturation vapour pressure at the dewpoint
-    temperature.
+    is the temperature to which air needs to be cooled to make it saturated,
+    the actual vapour pressure is the saturation vapour pressure
+    at the dewpoint temperature.
 
     This method is preferable to calculating vapour pressure from
     minimum temperature.
@@ -472,7 +472,7 @@ def net_out_lw_rad(tmin, tmax, sol_rad, cs_rad, avp):
     :rtype: float
     """
     tmp1 = (STEFAN_BOLTZMANN_CONSTANT *
-        ((math.pow(tmax, 4) + math.pow(tmin, 4)) / 2))
+            ((math.pow(tmax, 4) + math.pow(tmin, 4)) / 2))
     tmp2 = (0.34 - (0.14 * math.sqrt(avp)))
     tmp3 = 1.35 * (sol_rad / cs_rad) - 0.35
     return tmp1 * tmp2 * tmp3
@@ -544,7 +544,8 @@ def psy_const_of_psychrometer(psychrometer, atmos_pres):
         psy_coeff = 0.001200
     else:
         raise ValueError(
-            'psychrometer should be in range 1 to 3: {0!r}'.format(psychrometer))
+           'psychrometer should be in range 1 to 3: {0!r}'.format(psychrometer)
+        )
 
     return psy_coeff * atmos_pres
 

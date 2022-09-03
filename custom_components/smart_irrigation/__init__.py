@@ -21,7 +21,6 @@ from homeassistant.const import (
     CONF_LONGITUDE,
 )
 
-from .OWMClient import OWMClient
 from .const import (
     CONF_API_KEY,
     CONF_NUMBER_OF_SPRINKLERS,
@@ -264,12 +263,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         name,
     ):
         """Initialize."""
-        if api_key:
-            self.api = OWMClient(
-                api_key=api_key, longitude=longitude, latitude=latitude
-            )
-        else:
-            self.api = None
         self.longitude = longitude
         self.latitude = latitude
         self.elevation = elevation
