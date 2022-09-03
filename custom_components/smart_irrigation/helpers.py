@@ -1,20 +1,6 @@
 """Helper functions."""
 
 from .const import (
-    SETTING_METRIC,
-    UNIT_OF_MEASUREMENT_LITERS,
-    LITER_TO_GALLON_FACTOR,
-    UNIT_OF_MEASUREMENT_GALLONS,
-    UNIT_OF_MEASUREMENT_LPM,
-    UNIT_OF_MEASUREMENT_GPM,
-    UNIT_OF_MEASUREMENT_MMS,
-    MM_TO_INCH_FACTOR,
-    UNIT_OF_MEASUREMENT_INCHES,
-    UNIT_OF_MEASUREMENT_MMS_HOUR,
-    UNIT_OF_MEASUREMENT_INCHES_HOUR,
-    UNIT_OF_MEASUREMENT_M2,
-    M2_TO_SQ_FT_FACTOR,
-    UNIT_OF_MEASUREMENT_SQ_FT,
     CONF_SWITCH_SOURCE_PRECIPITATION,
     CONF_SWITCH_SOURCE_DAILY_TEMPERATURE,
     CONF_SWITCH_SOURCE_MINIMUM_TEMPERATURE,
@@ -40,106 +26,6 @@ from .const import (
 from ..smart_irrigation import pyeto
 
 
-def show_liter_or_gallon(value, som, show_units):
-    """Return nicely formatted liters or gallons."""
-    if value is None:
-        return "unknown"
-    factor = 1.0
-    unit_of_measurement = UNIT_OF_MEASUREMENT_LITERS
-    if not som == SETTING_METRIC:
-        factor = LITER_TO_GALLON_FACTOR
-        unit_of_measurement = UNIT_OF_MEASUREMENT_GALLONS
-    retval = f"{round(float(value) * factor,2)}"
-    if show_units:
-        retval = retval + f" {unit_of_measurement}"
-    return retval
-
-
-def show_liter_or_gallon_per_minute(value, som, show_units):
-    """Return nicely formatted liters or gallons."""
-    if value is None:
-        return "unknown"
-    factor = 1.0
-    unit_of_measurement = UNIT_OF_MEASUREMENT_LPM
-    if not som == SETTING_METRIC:
-        factor = LITER_TO_GALLON_FACTOR
-        unit_of_measurement = UNIT_OF_MEASUREMENT_GPM
-    retval = f"{round(float(value) * factor,2)}"
-    if show_units:
-        retval = retval + f" {unit_of_measurement}"
-    return retval
-
-
-def show_mm_or_inch(value, som, show_units):
-    """Return nicely formatted mm or inches."""
-    if value is None:
-        return "unknown"
-    factor = 1.0
-    unit_of_measurement = UNIT_OF_MEASUREMENT_MMS
-    if not som == SETTING_METRIC:
-        factor = MM_TO_INCH_FACTOR
-        unit_of_measurement = UNIT_OF_MEASUREMENT_INCHES
-    if isinstance(value, list):
-        retval = f"{[round(float(x) * factor,2) for x in value]}"
-    else:
-        retval = f"{round(float(value) * factor,2)}"
-    if show_units:
-        retval = retval + f" {unit_of_measurement}"
-    return retval
-
-
-def show_mm_or_inch_per_hour(value, som, show_units):
-    """Return nicely formatted mm or inches per hour."""
-    if value is None:
-        return "unknown"
-    factor = 1.0
-    unit_of_measurement = UNIT_OF_MEASUREMENT_MMS_HOUR
-    if not som == SETTING_METRIC:
-        factor = MM_TO_INCH_FACTOR
-        unit_of_measurement = UNIT_OF_MEASUREMENT_INCHES_HOUR
-    if isinstance(value, list):
-        retval = f"{[round(float(x) * factor,2) for x in value]}"
-    else:
-        retval = f"{round(float(value) * factor,2)}"
-    if show_units:
-        retval = retval + f" {unit_of_measurement}"
-    return retval
-
-
-def show_m2_or_sq_ft(value, som, show_units):
-    """Return nicely formatted m2 or sq ft."""
-    if value is None:
-        return "unknown"
-    factor = 1.0
-    unit_of_measurement = UNIT_OF_MEASUREMENT_M2
-    if not som == SETTING_METRIC:
-        factor = M2_TO_SQ_FT_FACTOR
-        unit_of_measurement = UNIT_OF_MEASUREMENT_SQ_FT
-    retval = f"{round(float(value) * factor,2)}"
-    if show_units:
-        retval = retval + f" {unit_of_measurement}"
-    return retval
-
-
-def show_seconds(value, show_units):
-    """Return nicely formatted seconds."""
-    if value is None:
-        return "unknown"
-    if show_units:
-        return f"{value} s"
-    return value
-
-
-def show_minutes(value, show_units):
-    """Return nicely formatted minutes."""
-    if value is None:
-        return "unknown"
-    retval = round(float(value) / 60.0, 2)
-    if show_units:
-        return f"{retval} min"
-    return retval
-
-
 def map_source_to_sensor(source):
     """Return the sensor setting for the source."""
     if source == CONF_SWITCH_SOURCE_PRECIPITATION:
@@ -163,11 +49,6 @@ def map_source_to_sensor(source):
     if source == CONF_SWITCH_CALCULATE_ET:
         return CONF_SENSOR_ET
     return None
-
-
-def convert_F_to_C(value):  # pylint: disable=invalid-name
-    """Convert Fahrenheit to Celcius."""
-    return float((float(value) - 32.0) / 1.8)
 
 
 def check_all(settings, boolval):
