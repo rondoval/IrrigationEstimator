@@ -4,7 +4,7 @@ Internal validation functions.
 :copyright: (c) 2015 by Mark Richards.
 :license: BSD 3-Clause, see LICENSE.txt for more details.
 """
-from .convert import deg2rad
+from pyeto.convert import deg2rad
 
 # Internal constants
 # Latitude
@@ -39,7 +39,7 @@ def check_doy(doy):
 
 
 def check_latitude_rad(latitude):
-     if not _MINLAT_RADIANS <= latitude <= _MAXLAT_RADIANS:
+    if not _MINLAT_RADIANS <= latitude <= _MAXLAT_RADIANS:
         raise ValueError(
             'latitude outside valid range {0!r} to {1!r} rad: {2!r}'
             .format(_MINLAT_RADIANS, _MAXLAT_RADIANS, latitude))

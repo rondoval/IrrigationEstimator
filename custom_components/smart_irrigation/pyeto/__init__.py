@@ -1,14 +1,14 @@
 
-#import ..pyeto
+import pyeto
 
-from .convert import (
+from pyeto.convert import (
     celsius2kelvin,
     kelvin2celsius,
     deg2rad,
     rad2deg,
 )
 
-from .fao import (
+from pyeto.fao import (
     atm_pressure,
     avp_from_tmin,
     avp_from_rhmin_rhmax,
@@ -45,7 +45,7 @@ from .fao import (
     wind_speed_2m,
 )
 
-from .thornthwaite import (
+from pyeto.thornthwaite import (
     thornthwaite,
     monthly_mean_daylight_hours,
 )
