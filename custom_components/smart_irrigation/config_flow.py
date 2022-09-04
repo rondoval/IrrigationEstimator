@@ -20,6 +20,7 @@ from .const import (
     CONF_NAME,
     CONF_NUMBER_OF_SPRINKLERS,
     CONF_SENSOR_HUMIDITY,
+    CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_PRESSURE,
     CONF_SENSOR_SOLAR_RADIATION,
     CONF_SENSOR_TEMPERATURE,
@@ -62,6 +63,9 @@ OPTIONS_SCHEMA = vol.Schema(
             selector.EntitySelectorConfig(domain="sensor")
         ),
         vol.Required(CONF_SENSOR_SOLAR_RADIATION): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        ),
+        vol.Required(CONF_SENSOR_PRECIPITATION): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         ),
         vol.Required(
