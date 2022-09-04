@@ -3,19 +3,18 @@
 from ..smart_irrigation import pyeto
 
 
-def estimate_fao56_hourly(
+def estimate_fao56_daily(
     day_of_year,
     latitude,
-    elevation,      # above sea level [m]
-    z,              # wind speed meas height [m]
-
-    temp_c_min,     # 24h minimum temp [C]
-    temp_c_max,     # 24h max temp [C]
-    rh_min,         # 24h minimum relative humidity [%]
-    rh_max,         # 24h max relative humidity [%]
-    atmos_pres,     # 24h avg atm. pressure, absolute [hPa]
-    wind_m_s,       # 24h avg wind speed [m/s]
-    sunshine_hours  # 24h sunshine hours
+    elevation,  # above sea level [m]
+    z,  # wind speed meas height [m]
+    temp_c_min,  # 24h minimum temp [C]
+    temp_c_max,  # 24h max temp [C]
+    rh_min,  # 24h minimum relative humidity [%]
+    rh_max,  # 24h max relative humidity [%]
+    atmos_pres,  # 24h avg atm. pressure, absolute [hPa]
+    wind_m_s,  # 24h avg wind speed [m/s]
+    sunshine_hours,  # 24h sunshine hours
 ):
 
     """Estimate fao56 from weather."""
@@ -23,27 +22,20 @@ def estimate_fao56_hourly(
 
     svp = pyeto.mean_svp(temp_c_min, temp_c_max)
     avp = pyeto.avp_from_rhmin_rhmax(
-        pyeto.svp_from_t(temp_c_min),
-        pyeto.svp_from_t(temp_c_max),
-        rh_min,
-        rh_max
+        pyeto.svp_from_t(temp_c_min), pyeto.svp_from_t(temp_c_max), rh_min, rh_max
     )
 
-    sha = pyeto.sunset_hour_angle(
-        pyeto.deg2rad(latitude),
-        pyeto.sol_dec(day_of_year))
+    sha = pyeto.sunset_hour_angle(pyeto.deg2rad(latitude), pyeto.sol_dec(day_of_year))
 
     et_rad = pyeto.et_rad(
         pyeto.deg2rad(latitude),
         pyeto.sol_dec(day_of_year),
         sha,
-        pyeto.inv_rel_dist_earth_sun(day_of_year)
+        pyeto.inv_rel_dist_earth_sun(day_of_year),
     )
 
     sol_rad = pyeto.sol_rad_from_sun_hours(
-        pyeto.daylight_hours(sha),
-        sunshine_hours,
-        et_rad
+        pyeto.daylight_hours(sha), sunshine_hours, et_rad
     )
 
     net_in_sol_rad = pyeto.net_in_sol_rad(sol_rad, 0.23)
@@ -66,7 +58,7 @@ def estimate_fao56_hourly(
         psy=pyeto.psy_const(
             atmos_pres / 10
         ),  # value stored is in hPa, but needs to be provided in kPa
-        shf=0
+        shf=0,
     )
 
     return eto
