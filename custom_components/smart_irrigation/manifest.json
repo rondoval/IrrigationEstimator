@@ -1,14 +1,12 @@
 {
   "domain": "irrigation_estimator",
   "name": "Irrigation Estimator",
-  "config_flow": true,
+  "version": "0.0.1",
   "documentation": "https://github.com/rondoval/HASmartIrrigation",
   "issue_tracker": "https://github.com/rondoval/HASmartIrrigation/issues",
-  "requirements": [],
-  "ssdp": [],
-  "zeroconf": [],
-  "homekit": {},
   "dependencies": [],
   "codeowners": ["@rondoval"],
-  "version": "0.0.1"
+  "config_flow": true,
+  "iot_class": "calculated",
+  "requirements": []
 }
