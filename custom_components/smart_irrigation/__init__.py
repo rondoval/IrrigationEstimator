@@ -28,40 +28,25 @@ from .const import (
     CONF_AREA,
     DOMAIN,
     STARTUP_MESSAGE,
-    SETTING_METRIC,
-    SETTING_US,
-    MM_TO_INCH_FACTOR,
-    LITER_TO_GALLON_FACTOR,
-    M2_TO_SQ_FT_FACTOR,
     CONF_BUCKET,
     EVENT_BUCKET_UPDATED,
     SERVICE_RESET_BUCKET,
-    SERVICE_SET_BUCKET,
     SERVICE_CALCULATE_DAILY_ADJUSTED_RUN_TIME,
     SERVICE_CALCULATE_HOURLY_ADJUSTED_RUN_TIME,
     CONF_LEAD_TIME,
     CONF_MAXIMUM_DURATION,
-    CONF_FORCE_MODE_DURATION,
     CONF_SHOW_UNITS,
     CONF_AUTO_REFRESH,
     CONF_AUTO_REFRESH_TIME,
     EVENT_HOURLY_DATA_UPDATED,
     CONF_SENSORS,
-    SERVICE_ENABLE_FORCE_MODE,
-    SERVICE_DISABLE_FORCE_MODE,
-    EVENT_FORCE_MODE_TOGGLED,
-    CONF_CHANGE_PERCENT,
     DEFAULT_LEAD_TIME,
     DEFAULT_MAXIMUM_DURATION,
-    DEFAULT_FORCE_MODE_DURATION,
     DEFAULT_SHOW_UNITS,
     DEFAULT_AUTO_REFRESH,
     DEFAULT_AUTO_REFRESH_TIME,
-    DEFAULT_CHANGE_PERCENT,
     CONF_INITIAL_UPDATE_DELAY,
     DEFAULT_INITIAL_UPDATE_DELAY,
-    CONF_COASTAL,
-    DEFAULT_COASTAL,
     CONF_ESTIMATE_SOLRAD_FROM_TEMP,
     DEFAULT_ESTIMATE_SOLRAD_FROM_TEMP,
     CONF_SENSOR_PRECIPITATION,
@@ -94,16 +79,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     number_of_sprinklers = entry.data.get(CONF_NUMBER_OF_SPRINKLERS)
     sensors = entry.data.get(CONF_SENSORS)
     _LOGGER.info("{} sensors: {}".format(entry.title, sensors))
-    # convert values to internal metric representation if required.
-    # depending on this we need to convert to metric internally or not
-
-    system_of_measurement = (
-        SETTING_METRIC if hass.config.units.is_metric else SETTING_US
-    )
-    # unit conversion
-    if system_of_measurement == SETTING_US:
-        flow = flow / LITER_TO_GALLON_FACTOR
-        area = area / M2_TO_SQ_FT_FACTOR
 
     throughput = number_of_sprinklers * flow
     precipitation_rate = (throughput * 60) / area
@@ -119,9 +94,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     maximum_duration = entry.options.get(
         CONF_MAXIMUM_DURATION, DEFAULT_MAXIMUM_DURATION
     )
-    force_mode_duration = entry.options.get(
-        CONF_FORCE_MODE_DURATION, DEFAULT_FORCE_MODE_DURATION
-    )
     show_units = entry.options.get(CONF_SHOW_UNITS, DEFAULT_SHOW_UNITS)
     auto_refresh = entry.options.get(CONF_AUTO_REFRESH, DEFAULT_AUTO_REFRESH)
     auto_refresh_time = entry.options.get(
@@ -130,7 +102,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     initial_update_delay = entry.options.get(
         CONF_INITIAL_UPDATE_DELAY, DEFAULT_INITIAL_UPDATE_DELAY
     )
-    coastal = entry.options.get(CONF_COASTAL, DEFAULT_COASTAL)
     estimate_solrad_from_temp = entry.options.get(
         CONF_ESTIMATE_SOLRAD_FROM_TEMP, DEFAULT_ESTIMATE_SOLRAD_FROM_TEMP
     )
@@ -142,7 +113,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         longitude=longitude,
         latitude=latitude,
         elevation=elevation,
-        system_of_measurement=system_of_measurement,
         area=area,
         flow=flow,
         number_of_sprinklers=number_of_sprinklers,
@@ -150,13 +120,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         precipitation_rate=precipitation_rate,
         lead_time=lead_time,
         maximum_duration=maximum_duration,
-        force_mode_duration=force_mode_duration,
         show_units=show_units,
         auto_refresh=auto_refresh,
         auto_refresh_time=auto_refresh_time,
         sensors=sensors,
         initial_update_delay=initial_update_delay,
-        coastal=coastal,
         estimate_solrad_from_temp=estimate_solrad_from_temp,
         name=name,
     )
@@ -183,9 +151,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN, f"{name}_{SERVICE_RESET_BUCKET}", coordinator.handle_reset_bucket,
     )
     hass.services.async_register(
-        DOMAIN, f"{name}_{SERVICE_SET_BUCKET}", coordinator.handle_set_bucket,
-    )
-    hass.services.async_register(
         DOMAIN,
         f"{name}_{SERVICE_CALCULATE_HOURLY_ADJUSTED_RUN_TIME}",
         coordinator.handle_calculate_hourly_adjusted_run_time,
@@ -194,16 +159,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN,
         f"{name}_{SERVICE_CALCULATE_DAILY_ADJUSTED_RUN_TIME}",
         coordinator.handle_calculate_daily_adjusted_run_time,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        f"{name}_{SERVICE_ENABLE_FORCE_MODE}",
-        coordinator.handle_enable_force_mode,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        f"{name}_{SERVICE_DISABLE_FORCE_MODE}",
-        coordinator.handle_disable_force_mode,
     )
     return True
 
@@ -240,11 +195,9 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass,
-        api_key,
         longitude,
         latitude,
         elevation,
-        system_of_measurement,
         area,
         flow,
         number_of_sprinklers,
@@ -252,13 +205,11 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         precipitation_rate,
         lead_time,
         maximum_duration,
-        force_mode_duration,
         show_units,
         auto_refresh,
         auto_refresh_time,
         sensors,
         initial_update_delay,
-        coastal,
         estimate_solrad_from_temp,
         name,
     ):
@@ -266,7 +217,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.longitude = longitude
         self.latitude = latitude
         self.elevation = elevation
-        self.system_of_measurement = system_of_measurement
         self.area = area
         self.flow = flow
         self.number_of_sprinklers = number_of_sprinklers
@@ -274,14 +224,10 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.precipitation_rate = precipitation_rate
         self.lead_time = lead_time
         self.maximum_duration = maximum_duration
-        self.force_mode_duration = force_mode_duration
-        # initialize force mode as Off
-        self.force_mode = False
         self.show_units = show_units
         self.auto_refresh = auto_refresh
         self.auto_refresh_time = auto_refresh_time
         self.initial_update_delay = int(initial_update_delay)
-        self.coastal = coastal
         self.estimate_solrad_from_temp = estimate_solrad_from_temp
         self.name = name
         self.sensors = sensors
@@ -345,24 +291,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.bucket = 0
         self.fire_bucket_updated_event()
 
-    def handle_set_bucket(self, call):
-        """Handle the service set_bucket call."""
-        if "value" in call.data:
-            value = float(call.data.get("value"))
-            if self.system_of_measurement != SETTING_METRIC:
-                value = value / MM_TO_INCH_FACTOR
-            _LOGGER.info(
-                "Set bucket service called, resetting bucket to provided value {}, converted to metric: {}".format(
-                    call.data.get("value"), value
-                )
-            )
-            self.bucket = value
-            self.fire_bucket_updated_event()
-        else:
-            _LOGGER.info(
-                "ignoring call of set_bucket service, no new value specified. specify a value like this: value: 1"
-            )
-
     async def handle_calculate_daily_adjusted_run_time(self, call):
         """Handle the service calculate_daily_adjusted_run_time call."""
         _LOGGER.info(
@@ -378,20 +306,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.data = await self._async_update_data()
         # fire an event so the sensor can update itself.
         event_to_fire = f"{self.name}_{EVENT_HOURLY_DATA_UPDATED}"
-        self.hass.bus.fire(event_to_fire, {})
-
-    async def handle_enable_force_mode(self, call):
-        """Handle the service enable_force_mode call."""
-        _LOGGER.info("handling enable_force_mode service call.")
-        self.force_mode = True
-        event_to_fire = f"{self.name}_{EVENT_FORCE_MODE_TOGGLED}"
-        self.hass.bus.fire(event_to_fire, {})
-
-    async def handle_disable_force_mode(self, call):
-        """Handle the service disable_force_mode call."""
-        _LOGGER.info("handling disable_force_mode service call.")
-        self.force_mode = False
-        event_to_fire = f"{self.name}_{EVENT_FORCE_MODE_TOGGLED}"
         self.hass.bus.fire(event_to_fire, {})
 
     def _update_last_of_day(self):

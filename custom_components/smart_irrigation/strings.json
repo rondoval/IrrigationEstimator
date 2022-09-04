@@ -1,14 +1,5 @@
 {
   "config": {
-    "abort": {
-      "single_instance_allowed": "Only a single configuration of Smart Irrigation is allowed."
-    },
-    "error": {
-      "auth": "Open Weather API key incorrect",
-      "name": "Specify an unique name for this instance.",
-      "reference_evapotranspiration_problem": "Please check your reference evapotranspiration values - they should be decimal and at least one should be non-zero.",
-      "sensornotfound": "One or more of the sensors specified do not exist"
-    },
     "title": "Smart Irrigation",
     "step": {
       "user": {
@@ -27,21 +18,6 @@
           "sensor_precipitation": "Sensor that measures total precipitation (rain/snow) (mm, inch)"
         }
       },
-      "step1": {
-        "title": "Smart Irrigation - Step 3/7: Sources",
-        "description": "If you need help with the configuration, please see https://github.com/jeroenterheerdt/HASmartIrrigation",
-        "data": {
-          "use_owm_precipitation": "Use OpenWeatherMap for precipitation",
-          "use_owm_temperature": "Use OpenWeatherMap for temperature",
-          "use_owm_min_temperature": "Use OpenWeatherMap for minimum temperature",
-          "use_owm_max_temperature": "Use OpenWeatherMap for maximum temperature",
-          "use_owm_dewpoint": "Use OpenWeatherMap for dewpoint",
-          "use_owm_pressure": "Use OpenWeatherMap for pressure",
-          "use_owm_humidity": "Use OpenWeatherMap for humidity",
-          "use_owm_windspeed": "Use OpenWeatherMap for windspeed",
-          "calculate_solar_radiation": "Calculate Solar Radiation (disable to specify a sensor)"
-        }
-      },
       "step2": {
         "title": "Smart Irrigation - Step 4/7: Sensors",
         "description": "If you need help with the configuration, please see https://github.com/jeroenterheerdt/HASmartIrrigation",
@@ -55,13 +31,6 @@
           "sensor_pressure": "Sensor that measures pressure (mbar, hPa, psi) ",
           "sensor_windspeed": "Sensor that measures windspeed (km/h, mph)",
           "sensor_solar_radiation": "Sensor that measures solar radiation (W/m2, W/sq ft)"
-        }
-      },
-      "step3": {
-        "title": "Smart Irrigation - Step 5/7: Open Weather Map API",
-        "description": "If you need help with the configuration, please see https://github.com/jeroenterheerdt/HASmartIrrigation",
-        "data": {
-          "api_key": "API key for Open Weather Map"
         }
       },
       "step5": {
