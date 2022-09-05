@@ -1,5 +1,4 @@
 """Sensor platform for Smart Irrigation."""
-import datetime
 import asyncio
 import logging
 
@@ -67,7 +66,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             self.precipitation = 0.0
             self.rain = 0.0
             self.snow = 0.0
-            self.evapotranspiration = 0.0
             self.bucket_delta = 0
         if self.type == TYPE_ADJUSTED_RUN_TIME:
             self.bucket = 0
@@ -145,11 +143,13 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     except Exception as ex:  # pylint: disable=broad-except
                         _LOGGER.error(ex)
 
-    def update_adjusted_run_time_from_event(self):
-        """Update the adjusted run time. Should only be called from _bucket_update and _force_mode_toggled event handlers."""
-        result = self.calculate_water_budget_and_adjusted_run_time(
-            self.bucket, self.type
-        )
+    @callback
+    def _bucket_updated(self, event: Event):
+        """Receive the bucket updated event."""
+        # update the sensor status.
+        event_dict = event.as_dict()
+        self.bucket = float(event_dict["data"][CONF_BUCKET])
+        result = self.calculate_water_budget_and_adjusted_run_time(self.bucket)
         art_entity_id = self.coordinator.entities[TYPE_ADJUSTED_RUN_TIME]
         attr = self.get_attributes_for_daily_adjusted_run_time(self.bucket, result)
         self.hass.states.set(
@@ -157,14 +157,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
             result,
             attr,
         )
-
-    @callback
-    def _bucket_updated(self, event: Event):
-        """Receive the bucket updated event."""
-        # update the sensor status.
-        event_dict = event.as_dict()
-        self.bucket = float(event_dict["data"][CONF_BUCKET])
-        self.update_adjusted_run_time_from_event()
 
     @callback
     def _hourly_data_updated(self, event: Event):
@@ -190,20 +182,6 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                     if sensor_state is not None:
                         sensor_state = sensor_state.state
 
-                        if sensor == CONF_SENSOR_PRECIPITATION:
-                            # get precipitation from sensor, assuming there is no separate snow sensor
-                            data["snow"] = 0.0
-                            # metric: mm, imperial: inch
-                            data["rain"] = sensor_state
-                        if sensor == CONF_SENSOR_HUMIDITY:
-                            rh_min = sensor_state
-                            rh_max = sensor_state
-                        if sensor == CONF_SENSOR_MAXIMUM_TEMPERATURE:
-                            t_max = sensor_state
-                        if sensor == CONF_SENSOR_MINIMUM_TEMPERATURE:
-                            t_min = sensor_state
-                        if sensor == CONF_SENSOR_PRESSURE:
-                            pressure = sensor_state
                         if sensor == CONF_SENSOR_WINDSPEED:
                             wind_speed = float(sensor_state / KMH_TO_MS_FACTOR)
                         if sensor == CONF_SENSOR_SOLAR_RADIATION:
@@ -214,35 +192,10 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
                             solrad = float(solrad / J_TO_MJ_FACTOR)
                             data["solar_radiation"] = solrad
 
-            # parse precipitation out of the today data
-            self.precipitation = self.get_precipitation(data)
-            # calculate et out of the today data or from sensor if that is the configuration
-            self.evapotranspiration = estimate_fao56_daily(
-                datetime.datetime.now().timetuple().tm_yday,
-                self.coordinator.latitude,
-                self.coordinator.elevation,
-                wind_meas_height,
-                t_min,
-                t_max,
-                rh_min,
-                rh_max,
-                pressure,
-                wind_speed,
-                sunshine_hours,
-            )
-
-            # calculate the adjusted runtime!
-            self.bucket_delta = self.precipitation - self.evapotranspiration
-
-            result = self.calculate_water_budget_and_adjusted_run_time(
-                self.bucket_delta, self.type
-            )
-            return result
+            return self.coordinator.evapotranspiration
 
         # daily adjusted run time
-        result = self.calculate_water_budget_and_adjusted_run_time(
-            self.coordinator.bucket, self.type
-        )
+        result = self.coordinator.adjusted_run_time
         return result
 
     @property
@@ -282,51 +235,3 @@ class SmartIrrigationSensor(SmartIrrigationEntity):
     def icon(self):
         """Return the icon of the sensor."""
         return ICON
-
-    def get_precipitation(self, data):
-        """Parse out precipitation info from OWM data."""
-        if data is not None:
-            # if rain or snow are missing from the OWM data set them to 0
-            if "rain" in data:
-                self.rain = float(data["rain"])
-            else:
-                self.rain = 0
-            if "snow" in data:
-                self.snow = float(data["snow"])
-            else:
-                self.snow = 0
-            _LOGGER.info(
-                "rain: {}, snow: {}".format(  # pylint: disable=logging-format-interpolation
-                    self.rain, self.snow
-                )
-            )
-            if isinstance(self.rain, str):
-                self.rain = 0
-            if isinstance(self.snow, str):
-                self.snow = 0
-            retval = self.rain + self.snow
-            if isinstance(retval, str):
-                if retval.count(".") > 1:
-                    retval = retval.split(".")[0] + "." + retval.split(".")[1]
-            retval = float(retval)
-            return retval
-        return 0.0
-
-    def calculate_water_budget_and_adjusted_run_time(self, bucket_val, thetype):
-        """Calculate water budget and adjusted run time based on bucket_val."""
-        adjusted_run_time = 0
-        if (
-            bucket_val is None
-            or isinstance(bucket_val, str)
-            or (isinstance(bucket_val, (float, int)) and bucket_val >= 0)
-        ):
-            # return 0 for adjusted runtime
-            adjusted_run_time = 0
-        else:
-            # we need to irrigate
-            adjusted_run_time = abs(bucket_val) / self.coordinator.precipitation_rate
-            if self.coordinator.maxium_duration > 0:
-                adjusted_run_time = min(
-                    self.coordinator.maximum_duration, adjusted_run_time
-                )
-        return adjusted_run_time

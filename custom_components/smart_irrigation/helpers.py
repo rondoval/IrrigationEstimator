@@ -7,7 +7,7 @@ def estimate_fao56_daily(
     day_of_year,
     latitude,
     elevation,  # above sea level [m]
-    z,  # wind speed meas height [m]
+    wind_meas_height,  # wind speed meas height [m]
     temp_c_min,  # 24h minimum temp [C]
     temp_c_max,  # 24h max temp [C]
     rh_min,  # 24h minimum relative humidity [%]
@@ -51,7 +51,7 @@ def estimate_fao56_daily(
     eto = pyeto.fao56_penman_monteith(
         net_rad=net_rad,
         t=pyeto.convert.celsius2kelvin(temp_c_mean),
-        ws=pyeto.wind_speed_2m(wind_m_s, z),
+        ws=pyeto.wind_speed_2m(wind_m_s, wind_meas_height),
         svp=svp,
         avp=avp,
         delta_svp=pyeto.delta_svp(temp_c_mean),

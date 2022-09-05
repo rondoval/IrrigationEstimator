@@ -32,10 +32,11 @@ from .const import (
     SERVICE_CALCULATE_DAILY_EVAPOTRANSPIRATION,
     CONF_MAXIMUM_DURATION,
     EVENT_HOURLY_DATA_UPDATED,
-    CONF_SENSORS,
     DEFAULT_MAXIMUM_DURATION,
     CONF_SENSOR_PRECIPITATION,
 )
+
+from .helpers import estimate_fao56_daily
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,7 +53,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     area = entry.data.get(CONF_AREA)
     flow = entry.data.get(CONF_FLOW)
     number_of_sprinklers = entry.data.get(CONF_NUMBER_OF_SPRINKLERS)
-    sensors = entry.data.get(CONF_SENSORS)
 
     throughput = number_of_sprinklers * flow
     precipitation_rate = (throughput * 60) / area
@@ -80,7 +80,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         throughput=throughput,
         precipitation_rate=precipitation_rate,
         maximum_duration=maximum_duration,
-        sensors=sensors,
         name=name,
     )
 
@@ -156,7 +155,6 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         throughput,
         precipitation_rate,
         maximum_duration,
-        sensors,
         name,
     ):
         """Initialize."""
@@ -170,11 +168,12 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.precipitation_rate = precipitation_rate
         self.maximum_duration = maximum_duration
         self.name = name
-        self.sensors = sensors
-        self.hourly_precipitation_list = []
-        self.hourly_evapotranspiration_list = []
         self.platforms = []
         self.bucket = 0
+        self.evapotranspiration = 0
+        self.adjusted_run_time = 0
+        self.precipitation = 0
+        self.bucket_delta = 0
         self.hass = hass
         self.entities = {}
         self.entry_setup_completed = False
@@ -184,8 +183,8 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         async_track_time_change(
             hass,
             self._async_update_last_of_day,
-            hour=0,
-            minute=1,
+            hour=23,
+            minute=59,
             second=0,
         )
         self.entry_setup_completed = True
@@ -215,20 +214,77 @@ class SmartIrrigationUpdateCoordinator(DataUpdateCoordinator):
         self.hass.bus.fire(event_to_fire, {})
 
     async def _async_update_last_of_day(self, *args):
-        # if bucket has a unit, parse it out
-        if len(self.hourly_precipitation_list) > 0:
-            # when using a sensor for precipitation just take the most recent (last item in the list) because we assume it is a daily actual value (cumulative)
-            precip = self.hourly_precipitation_list
-            evapotranspiration = self.hourly_evapotranspiration_list
-            bucket_delta = precip - evapotranspiration
-
-        else:
-            bucket_delta = 0
+        self.evapotranspiration = self.get_evapotranspiration()
+        self.precipitation = self.get_precipitation(data)
+        self.bucket_delta = self.precipitation - self.evapotranspiration
 
         # empty the hourly precipitation list
-        self.hourly_precipitation_list = []
-        self.hourly_evapotranspiration_list = []
-        self.bucket = self.bucket + bucket_delta
+        self.precipitation = 0
+        self.evapotranspiration = 0
+        self.bucket = self.bucket + self.bucket_delta
+        self.adjusted_run_time = self.calculate_water_budget_and_adjusted_run_time()
         # fire an event so the sensor can update itself.
         event_to_fire = f"{self.name}_{EVENT_BUCKET_UPDATED}"
         self.hass.bus.fire(event_to_fire, {CONF_BUCKET: self.bucket})
+
+    def calculate_water_budget_and_adjusted_run_time(self):
+        """Calculate water budget and adjusted run time based on bucket_val."""
+        adjusted_run_time = 0
+        if (
+            self.bucket is None
+            or isinstance(self.bucket, str)
+            or (isinstance(self.bucket, (float, int)) and self.bucket >= 0)
+        ):
+            # return 0 for adjusted runtime
+            adjusted_run_time = 0
+        else:
+            # we need to irrigate
+            adjusted_run_time = abs(self.bucket) / self.precipitation_rate
+            if self.maximum_duration > 0:
+                adjusted_run_time = min(self.maximum_duration, adjusted_run_time)
+        return adjusted_run_time
+
+    def get_evapotranspiration(self):
+        """Calculate evapotranspiration"""
+        return estimate_fao56_daily(
+            datetime.datetime.now().timetuple().tm_yday,
+            self.latitude,
+            self.elevation,
+            wind_meas_height,
+            t_min,
+            t_max,
+            rh_min,
+            rh_max,
+            pressure,
+            wind_speed,
+            sunshine_hours,
+        )
+
+    def get_precipitation(self, data):
+        """Parse out precipitation info from OWM data."""
+        if data is not None:
+            # if rain or snow are missing from the OWM data set them to 0
+            if "rain" in data:
+                self.rain = float(data["rain"])
+            else:
+                self.rain = 0
+            if "snow" in data:
+                self.snow = float(data["snow"])
+            else:
+                self.snow = 0
+            _LOGGER.info(
+                "rain: {}, snow: {}".format(  # pylint: disable=logging-format-interpolation
+                    self.rain, self.snow
+                )
+            )
+            if isinstance(self.rain, str):
+                self.rain = 0
+            if isinstance(self.snow, str):
+                self.snow = 0
+            retval = self.rain + self.snow
+            if isinstance(retval, str):
+                if retval.count(".") > 1:
+                    retval = retval.split(".")[0] + "." + retval.split(".")[1]
+            retval = float(retval)
+            return retval
+        return 0.0
