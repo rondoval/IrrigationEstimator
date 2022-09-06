@@ -63,9 +63,10 @@ async def async_setup_entry(
         [
             EvapotranspirationSensor(hass, config_entry),
             DailyBucketDelta(hass, config_entry),
+            CumulativeBucket(hass, config_entry),
+            CumulativeRunTime(hass, config_entry),
         ]
     )
-    # TODO
 
 
 class IrrigationSensor(RestoreSensor, SensorEntity):

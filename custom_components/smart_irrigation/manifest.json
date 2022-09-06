@@ -1,5 +1,6 @@
 {
   "domain": "irrigation_estimator",
+  "integration_type": "helper",
   "name": "Irrigation Estimator",
   "version": "0.0.1",
   "documentation": "https://github.com/rondoval/HASmartIrrigation",
@@ -7,6 +8,6 @@
   "dependencies": [],
   "codeowners": ["@rondoval"],
   "config_flow": true,
-  "iot_class": "calculated",
+  "iot_class": "local_push",
   "requirements": []
 }

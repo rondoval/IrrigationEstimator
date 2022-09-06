@@ -40,32 +40,32 @@ OPTIONS_SCHEMA = vol.Schema(
                 step=0.1,
                 unit_of_measurement=VOLUME_FLOW_RATE_LITRES_PER_MINUTE,
                 mode=selector.NumberSelectorMode.BOX,
-            )
+            ),
         ),
         vol.Required(CONF_AREA): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 step="0.1",
                 unit_of_measurement=AREA_SQUARE_METERS,
                 mode=selector.NumberSelectorMode.BOX,
-            )
+            ),
         ),
         vol.Required(CONF_SENSOR_TEMPERATURE): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(CONF_SENSOR_HUMIDITY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(CONF_SENSOR_PRESSURE): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(CONF_SENSOR_WINDSPEED): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(CONF_SENSOR_SOLAR_RADIATION): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(CONF_SENSOR_PRECIPITATION): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+            selector.EntitySelectorConfig(domain="sensor"),
         ),
         vol.Required(
             CONF_MAXIMUM_DURATION,
@@ -76,18 +76,18 @@ OPTIONS_SCHEMA = vol.Schema(
                 step=1,
                 unit_of_measurement=TIME_SECONDS,
                 mode=selector.NumberSelectorMode.BOX,
-            )
+            ),
         ),
-    },
+    }
 )
 
 CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME, default=NAME): selector.TextSelector(
-            selector.TextSelectorConfig(type="text")
+            selector.TextSelectorConfig(type="text"),
         ),
     }
-).extend(OPTIONS_SCHEMA)
+).extend(OPTIONS_SCHEMA.schema)
 
 CONFIG_FLOW: dict[str, SchemaFlowFormStep | SchemaFlowMenuStep] = {
     "user": SchemaFlowFormStep(CONFIG_SCHEMA)
