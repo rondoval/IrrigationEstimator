@@ -1,6 +1,6 @@
 """Helper functions."""
 
-from ..smart_irrigation import pyeto
+from ..irrigation_estimator import pyeto
 from homeassistant.config_entries import ConfigEntry
 from typing import Any
 

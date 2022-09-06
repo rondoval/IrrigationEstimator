@@ -1,6 +1,5 @@
 {
   "domain": "irrigation_estimator",
-  "integration_type": "helper",
   "name": "Irrigation Estimator",
   "version": "0.0.1",
   "documentation": "https://github.com/rondoval/HASmartIrrigation",
