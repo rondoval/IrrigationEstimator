@@ -6,6 +6,19 @@
         "title": "Irrigation Estimator setup",
         "description": "If you need help with the configuration, please see https://github.com/rondoval/IrrigationEstimator",
         "data": {
+          "name": "Name",
+          "number_of_sprinklers": "Number of sprinklers",
+          "flow": "Flow per sprinkler",
+          "area": "Irrigated area",
+          "sensor_temperature": "Temperature sensor",
+          "sensor_humidity": "Humidity sensor",
+          "sensor_pressure": "Pressure sensor",
+          "sensor_windspeed": "Wind speed sensor",
+          "sensor_solar_radiation": "Solar radiation sensor",
+          "sensor_precipitation": "Precipitation sensor",
+          "maximum_duration": "Maximum duration"
+        },
+        "data_description": {
           "name": "Unique name of the instance",
           "number_of_sprinklers": "Number of sprinklers",
           "flow": "Flow per sprinkler",
@@ -23,9 +36,9 @@
   },
   "options": {
     "step": {
-      "user": {
+      "init": {
         "data": {
-          "number_of_sprinklers": "Number of sprinklers",
+          "number_of_sprinklers": "[%key::component::irrigation_estimator::config::step::user::data::number_of_sprinklers%]",
           "flow": "Flow per sprinkler",
           "area": "Irrigated area",
           "sensor_temperature": "Sensor that measures current temperature",
