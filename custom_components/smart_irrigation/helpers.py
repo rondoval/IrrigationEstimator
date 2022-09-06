@@ -1,6 +1,45 @@
 """Helper functions."""
 
 from ..smart_irrigation import pyeto
+from homeassistant.config_entries import ConfigEntry
+from typing import Any
+
+
+def get_config_value(config_entry: ConfigEntry, key: str) -> Any:
+    """Get val from options or initial config"""
+    if config_entry.options:
+        return config_entry.options[key]
+    return config_entry.data[key]
+
+
+class MinMaxAvgTracker:
+    """Tracking min, max and avg of a sensor"""
+
+    def __init__(self):
+        self.min = None
+        self.max = None
+        self.avg = 0
+        self._accumulator = 0
+        self._count = 0
+
+    def reset(self):
+        """Reset values, restart tracking"""
+        self.min = None
+        self.min = None
+        self.max = None
+        self.avg = 0
+        self._accumulator = 0
+        self._count = 0
+
+    def update(self, new_value):
+        """Update with new value"""
+        if self.min is None or self.min > new_value:
+            self.min = new_value
+        if self.max is None or self.max < new_value:
+            self.max = new_value
+        self._accumulator += new_value
+        self._count += 1
+        self.avg = self._accumulator / self._count
 
 
 def estimate_fao56_daily(

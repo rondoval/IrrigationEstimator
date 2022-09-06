@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 import voluptuous as vol
-from homeassistant.const import AREA_SQUARE_METERS, TIME_SECONDS
+from homeassistant.const import AREA_SQUARE_METERS, TIME_SECONDS, CONF_NAME
 from homeassistant.helpers import selector
 from homeassistant.helpers.schema_config_entry_flow import (
     SchemaConfigFlowHandler,
@@ -17,7 +17,6 @@ from .const import (
     CONF_AREA,
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
-    CONF_NAME,
     CONF_NUMBER_OF_SPRINKLERS,
     CONF_SENSOR_HUMIDITY,
     CONF_SENSOR_PRECIPITATION,
