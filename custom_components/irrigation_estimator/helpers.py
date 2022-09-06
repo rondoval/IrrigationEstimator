@@ -18,16 +18,15 @@ class MinMaxAvgTracker:
     def __init__(self):
         self.min = None
         self.max = None
-        self.avg = 0
+        self.avg = None
         self._accumulator = 0
         self._count = 0
 
     def reset(self):
         """Reset values, restart tracking"""
         self.min = None
-        self.min = None
         self.max = None
-        self.avg = 0
+        self.avg = None
         self._accumulator = 0
         self._count = 0
 
@@ -40,6 +39,10 @@ class MinMaxAvgTracker:
         self._accumulator += new_value
         self._count += 1
         self.avg = self._accumulator / self._count
+
+    def is_tracking(self):
+        """Check if data is available"""
+        return all(item is not None for item in [self.min, self.max, self.avg])
 
 
 def estimate_fao56_daily(

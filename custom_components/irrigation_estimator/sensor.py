@@ -80,7 +80,10 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
         """Initialize the entity."""
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_name}"
         self._attr_name = f"{config_entry.title} {sensor_name}"
-        self._attr_device_info = DeviceInfo(name=config_entry.title)
+        self._attr_device_info = DeviceInfo(
+            name=config_entry.title,
+            identifiers={(DOMAIN, config_entry.entry_id)},
+        )
 
 
 class EvapotranspirationSensor(IrrigationSensor):
@@ -122,12 +125,14 @@ class EvapotranspirationSensor(IrrigationSensor):
             )
         )
 
-        async_track_time_change(
-            hass,
-            self._update,
-            hour=23,
-            minute=59,
-            second=0,
+        self.async_on_remove(
+            async_track_time_change(  # todo doesn't work - _update() takes 1 pos arg but 2 were given
+                hass,
+                self._update,
+                #                hour=23,
+                #               minute=59,
+                second=10,
+            )
         )
 
     @callback
@@ -150,25 +155,35 @@ class EvapotranspirationSensor(IrrigationSensor):
             self._pressure_tracker.update(float(new_state.state))
 
     @callback
-    def _update(self):
-        self._attr_native_value = estimate_fao56_daily(
-            datetime.datetime.now().timetuple().tm_yday,
-            self._latitude,
-            self._elevation,
-            self._wind_meas_height,
-            self._temp_tracker.min,
-            self._temp_tracker.max,
-            self._rh_tracker.min,
-            self._rh_tracker.max,
-            self._pressure_tracker.avg,
-            self._wind_tracker.avg,
-            self._sunshine_hours,
-        )
-        self._wind_tracker.reset()
-        self._temp_tracker.reset()
-        self._rh_tracker.reset()
-        self._pressure_tracker.reset()
-        self.async_write_ha_state()
+    def _update(self, now: datetime) -> None:
+        if all(
+            x.is_tracking()
+            for x in [
+                self._temp_tracker,
+                self._rh_tracker,
+                self._pressure_tracker,
+                self._wind_tracker,
+            ]
+        ):
+            eto = estimate_fao56_daily(
+                datetime.datetime.now().timetuple().tm_yday,
+                self._latitude,
+                self._elevation,
+                self._wind_meas_height,
+                self._temp_tracker.min,
+                self._temp_tracker.max,
+                self._rh_tracker.min,
+                self._rh_tracker.max,
+                self._pressure_tracker.avg,
+                self._wind_tracker.avg,
+                self._sunshine_hours,
+            )
+            self._attr_native_value = round(eto, 2)
+            self._wind_tracker.reset()
+            self._temp_tracker.reset()
+            self._rh_tracker.reset()
+            self._pressure_tracker.reset()
+            self.async_write_ha_state()
 
 
 class DailyBucketDelta(IrrigationSensor):
@@ -178,12 +193,15 @@ class DailyBucketDelta(IrrigationSensor):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         super().__init__(config_entry, ENTITY_BUCKET_DELTA)
+        self._evapotranspiration_entity_id = (
+            f"{SENSOR}.{config_entry.entry_id}_{ENTITY_EVAPOTRANSPIRATION}"
+        )
 
         self._sensors = {
             CONF_SENSOR_PRECIPITATION: get_config_value(
                 config_entry, CONF_SENSOR_PRECIPITATION
             ),
-            ENTITY_EVAPOTRANSPIRATION: f"{SENSOR}.{ENTITY_EVAPOTRANSPIRATION}",
+            ENTITY_EVAPOTRANSPIRATION: self._evapotranspiration_entity_id,
         }
         self._precipitation = 0.0
         self._rain = 0.0
@@ -208,7 +226,7 @@ class DailyBucketDelta(IrrigationSensor):
         ):
             return
 
-        if new_state.entity_id == ENTITY_EVAPOTRANSPIRATION:
+        if new_state.entity_id == self._evapotranspiration_entity_id:
             evapotranspiration = float(new_state.state)
             self._attr_native_value = self._precipitation - evapotranspiration
             self.async_write_ha_state()  # todo async won't work
@@ -252,7 +270,7 @@ class CumulativeBucket(IrrigationSensor):
         self.async_on_remove(
             async_track_state_change_event(
                 hass,
-                f"{SENSOR}.{ENTITY_BUCKET_DELTA}",
+                f"{SENSOR}.{config_entry.entry_id}_{ENTITY_BUCKET_DELTA}",
                 self.async_sensor_state_listener,
             )
         )
@@ -300,7 +318,9 @@ class CumulativeRunTime(IrrigationSensor):
         self._attr_native_value = 0
         self.async_on_remove(
             async_track_state_change_event(
-                hass, f"{SENSOR}.{ENTITY_BUCKET}", self.async_sensor_state_listener
+                hass,
+                f"{SENSOR}.{config_entry.entry_id}_{ENTITY_BUCKET}",
+                self.async_sensor_state_listener,
             )
         )
 
