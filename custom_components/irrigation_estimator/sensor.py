@@ -314,7 +314,7 @@ class CumulativeRunTime(IrrigationSensor):
         self._flow = get_config_value(config_entry, CONF_FLOW)
         self._maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
         self._throughput = self._number_of_sprinklers * self._flow
-        self._precipitation_rate = (self._throughput * 60) / self._area
+        self._precipitation_rate = round((self._throughput * 60) / self._area, 2)
         self._attr_native_value = 0
         self.async_on_remove(
             async_track_state_change_event(
