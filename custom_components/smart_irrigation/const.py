@@ -24,13 +24,19 @@ CONF_SNOW = "snow"
 CONF_PRECIPITATION = "precipitation"
 CONF_MAXIMUM_DURATION = "maximum_duration"
 
-# Sensors setting labels
+# Sensors settings
 CONF_SENSOR_TEMPERATURE = "sensor_temperature"
 CONF_SENSOR_HUMIDITY = "sensor_humidity"
 CONF_SENSOR_PRESSURE = "sensor_pressure"
 CONF_SENSOR_WINDSPEED = "sensor_windspeed"
 CONF_SENSOR_SOLAR_RADIATION = "sensor_solar_radiation"
 CONF_SENSOR_PRECIPITATION = "sensor_precipitation"
+
+# Entities
+ENTITY_EVAPOTRANSPIRATION = "evapotranspiration"
+ENTITY_RUNTIME = "run time"
+ENTITY_BUCKET = "bucket"
+ENTITY_BUCKET_DELTA = "bucket delta"
 
 # Services
 SERVICE_RESET_BUCKET = "reset_bucket"
