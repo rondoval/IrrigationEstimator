@@ -33,12 +33,17 @@ CONF_SENSOR_PRESSURE = "sensor_pressure"
 CONF_SENSOR_WINDSPEED = "sensor_windspeed"
 CONF_SENSOR_SOLAR_RADIATION = "sensor_solar_radiation"
 CONF_SENSOR_PRECIPITATION = "sensor_precipitation"
+CONF_PRECIPITATION_SENSOR_TYPE = "precipitation_sensor_type"
 
 # Entities
 ENTITY_EVAPOTRANSPIRATION = "evapotranspiration"
 ENTITY_RUNTIME = "run time"
 ENTITY_BUCKET = "bucket"
 ENTITY_BUCKET_DELTA = "bucket delta"
+
+# Selector values
+OPTION_CUMULATIVE = "cumulative"
+OPTION_HOURLY = "hourly"
 
 # Services
 SERVICE_RESET_BUCKET = "reset_bucket"

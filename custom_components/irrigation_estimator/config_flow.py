@@ -26,6 +26,7 @@ from .const import (
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
     CONF_NUMBER_OF_SPRINKLERS,
+    CONF_PRECIPITATION_SENSOR_TYPE,
     CONF_SENSOR_HUMIDITY,
     CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_PRESSURE,
@@ -36,6 +37,8 @@ from .const import (
     DEFAULT_MAXIMUM_DURATION,
     DOMAIN,
     NAME,
+    OPTION_CUMULATIVE,
+    OPTION_HOURLY,
     VOLUME_FLOW_RATE_LITRES_PER_MINUTE,
 )
 
@@ -85,6 +88,18 @@ OPTIONS_SCHEMA = vol.Schema(
         ),
         vol.Required(CONF_SENSOR_PRECIPITATION): selector.EntitySelector(
             selector.EntitySelectorConfig(domain=Platform.SENSOR),
+        ),
+        vol.Required(CONF_PRECIPITATION_SENSOR_TYPE): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(
+                        value=OPTION_CUMULATIVE, label="cumulative"
+                    ),
+                    selector.SelectOptionDict(
+                        value=OPTION_HOURLY, label="hourly average"
+                    ),
+                ],
+            ),
         ),
         vol.Required(
             CONF_MAXIMUM_DURATION,

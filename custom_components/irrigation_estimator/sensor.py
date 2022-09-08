@@ -35,6 +35,7 @@ from .const import (
     CONF_NUMBER_OF_SPRINKLERS,
     ATTR_PRECIPITATION,
     ATTR_PRECIPITATION_RATE,
+    CONF_PRECIPITATION_SENSOR_TYPE,
     CONF_SENSOR_HUMIDITY,
     CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_PRESSURE,
@@ -49,6 +50,7 @@ from .const import (
     ENTITY_EVAPOTRANSPIRATION,
     ENTITY_RUNTIME,
     ICON,
+    OPTION_CUMULATIVE,
     SERVICE_RESET_BUCKET,
 )
 
@@ -89,6 +91,9 @@ class CalculationEngine:
         self.throughput = self.number_of_sprinklers * self.flow
         self.area = get_config_value(config_entry, CONF_AREA)
         self.precipitation_rate = round((self.throughput * 60) / self.area, 2)
+        self._precipitation_sensor_type = get_config_value(
+            config_entry, CONF_PRECIPITATION_SENSOR_TYPE
+        )
         self.maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
         self._wind_meas_height = get_config_value(
             config_entry, CONF_WIND_MEASUREMENT_HEIGHT
@@ -105,7 +110,7 @@ class CalculationEngine:
             ),
             CONF_SENSOR_SOLAR_RADIATION: get_config_value(
                 config_entry, CONF_SENSOR_SOLAR_RADIATION
-            ),  # todo check units
+            ),  # todo selector real radiation sensor or calc sunshine above threshold
             CONF_SENSOR_PRECIPITATION: get_config_value(
                 config_entry, CONF_SENSOR_PRECIPITATION
             ),
@@ -113,16 +118,15 @@ class CalculationEngine:
 
         self._sunshine_hours = 4  # todo from radiaton sensor
         self._temp_tracker = MinMaxAvgTracker()
-        self._wind_tracker = MinMaxAvgTracker()  # todo check units
+        self._wind_tracker = MinMaxAvgTracker()
         self._rh_tracker = MinMaxAvgTracker()
         self._pressure_tracker = MinMaxAvgTracker()
 
-        self.evapotranspiration = 0
-        self.rain = 0.0  # todo conf cumulative/hourly
-        self.precipitation = 0.0
-        self.bucket_delta = 0.0
-        self.bucket = 0.0
-        self.runtime = 0
+        self.evapotranspiration = 0  # todo restore
+        self.precipitation = 0.0  # todo restore
+        self.bucket_delta = 0.0  # todo restore
+        self.bucket = 0.0  # todo restore
+        self.runtime = 0  # todo restore
 
         self._listeners: dict[CALLBACK_TYPE, CALLBACK_TYPE] = {}
         self._unsub_status: CALLBACK_TYPE | None = None
@@ -195,7 +199,11 @@ class CalculationEngine:
         if entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
             self._pressure_tracker.update(value)
         if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
-            self.precipitation = value  # todo should accumulate - check openweathermap?
+            if self._precipitation_sensor_type == OPTION_CUMULATIVE:
+                self.precipitation = value
+            else:
+                # todo should really be added once per hour - _update_hourly()?
+                self.precipitation += value
 
     def _update_daily(self, _):
         self._update_eto()
@@ -289,7 +297,7 @@ class EvapotranspirationSensor(IrrigationSensor):
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
         super().__init__(coordinator, config_entry, ENTITY_EVAPOTRANSPIRATION)
-        self._attr_native_value = 0.0
+        self._attr_native_value = coordinator.evapotranspiration
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -306,7 +314,7 @@ class DailyBucketDelta(IrrigationSensor):
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
         super().__init__(coordinator, config_entry, ENTITY_BUCKET_DELTA)
-        self._attr_native_value = 0.0
+        self._attr_native_value = coordinator.bucket_delta
 
     # async def async_added_to_hass(self):
     #     if (data := await self.async_get_last_sensor_data()) is not None:
@@ -338,6 +346,7 @@ class CumulativeBucket(IrrigationSensor):
         config_entry: ConfigEntry,
     ) -> None:
         super().__init__(coordinator, config_entry, ENTITY_BUCKET)
+        self._attr_native_value = coordinator.bucket
 
         # register the services
         hass.services.async_register(
@@ -349,7 +358,7 @@ class CumulativeBucket(IrrigationSensor):
     @callback
     def _reset(self):
         self.coordinator.bucket = 0.0
-        self._attr_native_value = 0
+        self._attr_native_value = 0.0
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -367,7 +376,7 @@ class CumulativeRunTime(IrrigationSensor):
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
         super().__init__(coordinator, config_entry, ENTITY_RUNTIME)
-        self._attr_native_value = 0
+        self._attr_native_value = coordinator.runtime
 
     @callback
     def _handle_coordinator_update(self) -> None:

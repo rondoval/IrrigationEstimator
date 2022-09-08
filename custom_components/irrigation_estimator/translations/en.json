@@ -16,7 +16,9 @@
           "sensor_windspeed": "Wind speed sensor",
           "sensor_solar_radiation": "Solar radiation sensor",
           "sensor_precipitation": "Precipitation sensor",
-          "maximum_duration": "Maximum duration"
+          "precipitation_sensor_type": "Type of precipitation sensor",
+          "maximum_duration": "Maximum duration",
+          "wind_meas_height": "Height at which wind speed is measured"
         },
         "data_description": {
           "name": "Unique name of the instance",
@@ -29,7 +31,9 @@
           "sensor_windspeed": "Sensor that measures current windspeed",
           "sensor_solar_radiation": "Sensor that measures current solar radiation",
           "sensor_precipitation": "Sensor that measures total daily precipitation",
-          "maximum_duration": "Maximum duration (0 - no limit)"
+          "precipitation_sensor_type": "Type of precipitation sensor",
+          "maximum_duration": "Maximum duration (0 - no limit)",
+          "wind_meas_height": "Height at which wind speed is measured"
         }
       }
     }
@@ -47,7 +51,9 @@
           "sensor_windspeed": "Sensor that measures current windspeed",
           "sensor_solar_radiation": "Sensor that measures current solar radiation",
           "sensor_precipitation": "Sensor that measures total daily precipitation",
-          "maximum_duration": "Maximum duration (0 - no limit)"
+          "precipitation_sensor_type": "Type of precipitation sensor",
+          "maximum_duration": "Maximum duration",
+          "wind_meas_height": "Height at which wind speed is measured"
         }
       }
     }
