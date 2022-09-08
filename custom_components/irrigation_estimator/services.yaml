@@ -1,4 +1,2 @@
 reset_bucket:
   description: Reset the bucket to 0. Call this once watering is completed.
-calculate_daily_evapotranspiration:
-  description: Trigger calculation of daily ET and run time

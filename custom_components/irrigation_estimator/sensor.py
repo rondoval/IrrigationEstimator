@@ -1,5 +1,7 @@
 """SmartIrrigationEntity class."""
+from __future__ import annotations
 import datetime
+import logging
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -17,7 +19,7 @@ from homeassistant.const import (
     CONF_LONGITUDE,
     CONF_ELEVATION,
 )
-from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
@@ -31,26 +33,26 @@ from .const import (
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
     CONF_NUMBER_OF_SPRINKLERS,
-    CONF_PRECIPITATION,
-    CONF_PRECIPITATION_RATE,
-    CONF_RAIN,
+    ATTR_PRECIPITATION,
+    ATTR_PRECIPITATION_RATE,
     CONF_SENSOR_HUMIDITY,
     CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_PRESSURE,
     CONF_SENSOR_SOLAR_RADIATION,
     CONF_SENSOR_WINDSPEED,
     CONF_SENSOR_TEMPERATURE,
-    CONF_SNOW,
-    CONF_THROUGHPUT,
+    ATTR_THROUGHPUT,
+    CONF_WIND_MEASUREMENT_HEIGHT,
     DOMAIN,
     ENTITY_BUCKET,
     ENTITY_BUCKET_DELTA,
     ENTITY_EVAPOTRANSPIRATION,
     ENTITY_RUNTIME,
     ICON,
-    SENSOR,
     SERVICE_RESET_BUCKET,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -59,40 +61,39 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
+
+    calc_engine = CalculationEngine(hass, config_entry)
+
     async_add_entities(
         [
-            EvapotranspirationSensor(hass, config_entry),
-            DailyBucketDelta(hass, config_entry),
-            CumulativeBucket(hass, config_entry),
-            CumulativeRunTime(hass, config_entry),
+            EvapotranspirationSensor(calc_engine, config_entry),
+            DailyBucketDelta(calc_engine, config_entry),
+            CumulativeBucket(hass, calc_engine, config_entry),
+            CumulativeRunTime(calc_engine, config_entry),
         ]
     )
 
 
-class IrrigationSensor(RestoreSensor, SensorEntity):
-    """Smart Irrigation Entity."""
-
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_should_poll = False
-    _attr_icon = ICON
-
-    def __init__(self, config_entry: ConfigEntry, sensor_name: str) -> None:
-        """Initialize the entity."""
-        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_name}"
-        self._attr_name = f"{config_entry.title} {sensor_name}"
-        self._attr_device_info = DeviceInfo(
-            name=config_entry.title,
-            identifiers={(DOMAIN, config_entry.entry_id)},
-        )
-
-
-class EvapotranspirationSensor(IrrigationSensor):
-    """Daily evapotranspiration"""
-
-    _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
+class CalculationEngine:
+    """Listens to sensors and makes backend calculations"""
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        super().__init__(config_entry, ENTITY_EVAPOTRANSPIRATION)
+        self.hass = hass
+        self._latitude = hass.config.as_dict().get(CONF_LATITUDE)
+        self._longitude = hass.config.as_dict().get(CONF_LONGITUDE)
+        self._elevation = hass.config.as_dict().get(CONF_ELEVATION)
+        self.number_of_sprinklers = get_config_value(
+            config_entry, CONF_NUMBER_OF_SPRINKLERS
+        )
+        self.flow = get_config_value(config_entry, CONF_FLOW)
+        self.throughput = self.number_of_sprinklers * self.flow
+        self.area = get_config_value(config_entry, CONF_AREA)
+        self.precipitation_rate = round((self.throughput * 60) / self.area, 2)
+        self.maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
+        self._wind_meas_height = get_config_value(
+            config_entry, CONF_WIND_MEASUREMENT_HEIGHT
+        )
+
         self._sensors = {
             CONF_SENSOR_TEMPERATURE: get_config_value(
                 config_entry, CONF_SENSOR_TEMPERATURE
@@ -105,39 +106,75 @@ class EvapotranspirationSensor(IrrigationSensor):
             CONF_SENSOR_SOLAR_RADIATION: get_config_value(
                 config_entry, CONF_SENSOR_SOLAR_RADIATION
             ),  # todo check units
+            CONF_SENSOR_PRECIPITATION: get_config_value(
+                config_entry, CONF_SENSOR_PRECIPITATION
+            ),
         }
-        self._wind_meas_height = 10  # todo
+
         self._sunshine_hours = 4  # todo from radiaton sensor
         self._temp_tracker = MinMaxAvgTracker()
         self._wind_tracker = MinMaxAvgTracker()  # todo check units
         self._rh_tracker = MinMaxAvgTracker()
         self._pressure_tracker = MinMaxAvgTracker()
 
-        self._latitude = hass.config.as_dict().get(CONF_LATITUDE)
-        self._longitude = hass.config.as_dict().get(CONF_LONGITUDE)
-        self._elevation = hass.config.as_dict().get(CONF_ELEVATION)
+        self.evapotranspiration = 0
+        self.rain = 0.0  # todo conf cumulative/hourly
+        self.precipitation = 0.0
+        self.bucket_delta = 0.0
+        self.bucket = 0.0
+        self.runtime = 0
 
-        self._attr_native_value = 0
+        self._listeners: dict[CALLBACK_TYPE, CALLBACK_TYPE] = {}
+        self._unsub_status: CALLBACK_TYPE | None = None
+        self._unsub_time: CALLBACK_TYPE | None = None
 
-        self.async_on_remove(
-            async_track_state_change_event(
-                hass, self._sensors.values(), self.async_sensor_state_listener
-            )
+    @callback
+    def _subscribe_events(self):
+        self._unsubscribe_events()
+        self._unsub_status = async_track_state_change_event(
+            self.hass, self._sensors.values(), self._async_sensor_state_listener
         )
-
-        self.async_on_remove(
-            async_track_time_change(  # todo doesn't work - _update() takes 1 pos arg but 2 were given
-                hass,
-                self._update,
-                #                hour=23,
-                #               minute=59,
-                second=10,
-            )
+        self._unsub_time = async_track_time_change(
+            self.hass,
+            self._update_daily,
+            hour=0,
+            minute=0,
+            second=10,
         )
 
     @callback
-    def async_sensor_state_listener(self, event: Event):
-        """Sensor state listener"""
+    def _unsubscribe_events(self):
+        if self._unsub_status:
+            self._unsub_status()
+            self._unsub_status = None
+        if self._unsub_time:
+            self._unsub_time()
+            self._unsub_time = None
+
+    @callback
+    def async_add_listener(self, update_callback: CALLBACK_TYPE):
+        """Subscribe to updates"""
+        subscribe = not self._listeners
+
+        @callback
+        def remove_listener() -> None:
+            self._listeners.pop(remove_listener)
+            if not self._listeners:
+                self._unsubscribe_events()
+
+        self._listeners[remove_listener] = update_callback
+        if subscribe:
+            self._subscribe_events()
+
+        return remove_listener
+
+    @callback
+    def _async_update_listeners(self):
+        for update_callback in list(self._listeners.values()):
+            update_callback()
+
+    @callback
+    def _async_sensor_state_listener(self, event: Event):
         new_state = event.data.get("new_state")
         if new_state is None or new_state.state in (
             STATE_UNKNOWN,
@@ -145,17 +182,40 @@ class EvapotranspirationSensor(IrrigationSensor):
         ):
             return
 
-        if new_state.entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
-            self._temp_tracker.update(float(new_state.state))
-        if new_state.entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
-            self._rh_tracker.update(float(new_state.state))
-        if new_state.entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
-            self._wind_tracker.update(float(new_state.state))
-        if new_state.entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
-            self._pressure_tracker.update(float(new_state.state))
+        # TODO ugly
+        entity_id = new_state.entity_id
+        value = float(new_state.state)
+        if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
+            self._temp_tracker.update(value)
+        if entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
+            self._rh_tracker.update(value)
+        if entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
+            # todo convert units
+            self._wind_tracker.update(value)
+        if entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
+            self._pressure_tracker.update(value)
+        if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
+            self.precipitation = value  # todo should accumulate - check openweathermap?
 
-    @callback
-    def _update(self, now: datetime) -> None:
+    def _update_daily(self, _):
+        self._update_eto()
+        self._update_bucket()
+        self._update_runtime()
+        self._async_update_listeners()
+
+    def _update_runtime(self):
+        self.runtime = 0
+        if self.bucket is not None and self.bucket < 0:
+            self.runtime = abs(self.bucket) / self.precipitation_rate * 3600
+            if self.maximum_duration > 0:
+                self.runtime = min(self.maximum_duration, self.runtime)
+
+    def _update_bucket(self):
+        self.bucket_delta = self.precipitation - self.evapotranspiration
+        self.precipitation = 0.0
+        self.bucket += self.bucket_delta
+
+    def _update_eto(self):
         if all(
             x.is_tracking()
             for x in [
@@ -178,12 +238,63 @@ class EvapotranspirationSensor(IrrigationSensor):
                 self._wind_tracker.avg,
                 self._sunshine_hours,
             )
-            self._attr_native_value = round(eto, 2)
+            self.evapotranspiration = round(eto, 2)
             self._wind_tracker.reset()
             self._temp_tracker.reset()
             self._rh_tracker.reset()
             self._pressure_tracker.reset()
-            self.async_write_ha_state()
+
+
+class IrrigationSensor(RestoreSensor, SensorEntity):
+    """Smart Irrigation Entity."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_should_poll = False
+    _attr_icon = ICON
+
+    def __init__(
+        self,
+        coordinator: CalculationEngine,
+        config_entry: ConfigEntry,
+        sensor_name: str,
+    ) -> None:
+        """Initialize the entity."""
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_name}"
+        self._attr_name = f"{config_entry.title} {sensor_name}"
+        self._attr_device_info = DeviceInfo(
+            name=config_entry.title,
+            identifiers={(DOMAIN, config_entry.entry_id)},
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()
+
+
+class EvapotranspirationSensor(IrrigationSensor):
+    """Daily evapotranspiration"""
+
+    _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
+
+    def __init__(
+        self, coordinator: CalculationEngine, config_entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, config_entry, ENTITY_EVAPOTRANSPIRATION)
+        self._attr_native_value = 0.0
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = self.coordinator.evapotranspiration
+        return super()._handle_coordinator_update()
 
 
 class DailyBucketDelta(IrrigationSensor):
@@ -191,72 +302,28 @@ class DailyBucketDelta(IrrigationSensor):
 
     _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        super().__init__(config_entry, ENTITY_BUCKET_DELTA)
-        self._evapotranspiration_entity_id = (
-            f"{SENSOR}.{config_entry.entry_id}_{ENTITY_EVAPOTRANSPIRATION}"
-        )
-
-        self._sensors = {
-            CONF_SENSOR_PRECIPITATION: get_config_value(
-                config_entry, CONF_SENSOR_PRECIPITATION
-            ),
-            ENTITY_EVAPOTRANSPIRATION: self._evapotranspiration_entity_id,
-        }
-        self._precipitation = 0.0
-        self._rain = 0.0
-        self._snow = 0.0
-        self._attr_native_value = 0
-
-        self.async_on_remove(
-            async_track_state_change_event(
-                hass,
-                self._sensors.values(),
-                self.async_sensor_state_listener,
-            )
-        )
-
-    @callback
-    def async_sensor_state_listener(self, event: Event):
-        """Handle sensor state changes"""
-        new_state = event.data.get("new_state")
-        if new_state is None or new_state.state in (
-            STATE_UNKNOWN,
-            STATE_UNAVAILABLE,
-        ):
-            return
-
-        if new_state.entity_id == self._evapotranspiration_entity_id:
-            evapotranspiration = float(new_state.state)
-            self._attr_native_value = self._precipitation - evapotranspiration
-            self.async_write_ha_state()  # todo async won't work
-            self._reset()
-            return
-
-        self._rain = float(
-            new_state.state
-        )  # todo should accumulate - check openweathermap?
-        self._precipitation = self._rain + self._snow
+    def __init__(
+        self, coordinator: CalculationEngine, config_entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, config_entry, ENTITY_BUCKET_DELTA)
+        self._attr_native_value = 0.0
 
     # async def async_added_to_hass(self):
     #     if (data := await self.async_get_last_sensor_data()) is not None:
     #         self._attr_native_value = data.native_value
     #         self._rain = data.rain
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = self.coordinator.bucket_delta
+        return super()._handle_coordinator_update()
+
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {
-            CONF_RAIN: self._rain,
-            CONF_SNOW: self._snow,
-            CONF_PRECIPITATION: self._precipitation,
+            ATTR_PRECIPITATION: self.coordinator.precipitation,
         }
-
-    @callback
-    def _reset(self):
-        self._precipitation = 0
-        self._rain = 0
-        self._snow = 0
 
 
 class CumulativeBucket(IrrigationSensor):
@@ -264,16 +331,14 @@ class CumulativeBucket(IrrigationSensor):
 
     _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        super().__init__(config_entry, ENTITY_BUCKET)
-        self._attr_native_value = 0
-        self.async_on_remove(
-            async_track_state_change_event(
-                hass,
-                f"{SENSOR}.{config_entry.entry_id}_{ENTITY_BUCKET_DELTA}",
-                self.async_sensor_state_listener,
-            )
-        )
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: CalculationEngine,
+        config_entry: ConfigEntry,
+    ) -> None:
+        super().__init__(coordinator, config_entry, ENTITY_BUCKET)
+
         # register the services
         hass.services.async_register(
             DOMAIN,
@@ -282,21 +347,14 @@ class CumulativeBucket(IrrigationSensor):
         )
 
     @callback
-    def async_sensor_state_listener(self, event: Event):
-        """Handle sensor state changes"""
-        new_state = event.data.get("new_state")
-        if new_state is None or new_state.state in (
-            STATE_UNKNOWN,
-            STATE_UNAVAILABLE,
-        ):
-            return
-
-        bucket_delta = float(new_state.state)
-        self._attr_native_value += bucket_delta
-        self.async_write_ha_state()
-
     def _reset(self):
+        self.coordinator.bucket = 0.0
         self._attr_native_value = 0
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = self.coordinator.bucket
+        return super()._handle_coordinator_update()
 
 
 class CumulativeRunTime(IrrigationSensor):
@@ -305,53 +363,25 @@ class CumulativeRunTime(IrrigationSensor):
     _attr_native_unit_of_measurement = TIME_SECONDS
     _attr_device_class = SensorDeviceClass.DURATION
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        super().__init__(config_entry, ENTITY_RUNTIME)
-        self._number_of_sprinklers = get_config_value(
-            config_entry, CONF_NUMBER_OF_SPRINKLERS
-        )
-        self._area = get_config_value(config_entry, CONF_AREA)
-        self._flow = get_config_value(config_entry, CONF_FLOW)
-        self._maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
-        self._throughput = self._number_of_sprinklers * self._flow
-        self._precipitation_rate = round((self._throughput * 60) / self._area, 2)
+    def __init__(
+        self, coordinator: CalculationEngine, config_entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, config_entry, ENTITY_RUNTIME)
         self._attr_native_value = 0
-        self.async_on_remove(
-            async_track_state_change_event(
-                hass,
-                f"{SENSOR}.{config_entry.entry_id}_{ENTITY_BUCKET}",
-                self.async_sensor_state_listener,
-            )
-        )
 
     @callback
-    def async_sensor_state_listener(self, event: Event):
-        """Update sensor"""
-        new_state = event.data.get("new_state")
-        if new_state is None or new_state.state in (
-            STATE_UNKNOWN,
-            STATE_UNAVAILABLE,
-        ):
-            return
-
-        bucket = float(new_state.state)
-        self._attr_native_value = 0
-        if bucket is not None and bucket < 0:
-            self._attr_native_value = abs(bucket) / self._precipitation_rate
-            if self._maximum_duration > 0:
-                self._attr_native_value = min(
-                    self._maximum_duration, self._attr_native_value
-                )
-        self.async_write_ha_state()
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = self.coordinator.runtime
+        return super()._handle_coordinator_update()
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {
-            CONF_NUMBER_OF_SPRINKLERS: self._number_of_sprinklers,
-            CONF_FLOW: self._flow,
-            CONF_THROUGHPUT: self._throughput,
-            CONF_AREA: self._area,
-            CONF_PRECIPITATION_RATE: self._precipitation_rate,
-            CONF_MAXIMUM_DURATION: self._maximum_duration,
+            CONF_NUMBER_OF_SPRINKLERS: self.coordinator.number_of_sprinklers,
+            CONF_FLOW: self.coordinator.flow,
+            ATTR_THROUGHPUT: self.coordinator.throughput,
+            CONF_AREA: self.coordinator.area,
+            ATTR_PRECIPITATION_RATE: self.coordinator.precipitation_rate,
+            CONF_MAXIMUM_DURATION: self.coordinator.maximum_duration,
         }

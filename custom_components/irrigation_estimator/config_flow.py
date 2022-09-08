@@ -5,7 +5,15 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 import voluptuous as vol
-from homeassistant.const import AREA_SQUARE_METERS, TIME_SECONDS, CONF_NAME
+from homeassistant.const import (
+    AREA_SQUARE_METERS,
+    LENGTH_METERS,
+    PRECISION_TENTHS,
+    PRECISION_WHOLE,
+    TIME_SECONDS,
+    CONF_NAME,
+    Platform,
+)
 from homeassistant.helpers import selector
 from homeassistant.helpers.schema_config_entry_flow import (
     SchemaConfigFlowHandler,
@@ -24,6 +32,7 @@ from .const import (
     CONF_SENSOR_SOLAR_RADIATION,
     CONF_SENSOR_TEMPERATURE,
     CONF_SENSOR_WINDSPEED,
+    CONF_WIND_MEASUREMENT_HEIGHT,
     DEFAULT_MAXIMUM_DURATION,
     DOMAIN,
     NAME,
@@ -33,39 +42,49 @@ from .const import (
 OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NUMBER_OF_SPRINKLERS): selector.NumberSelector(
-            selector.NumberSelectorConfig(step=1, mode=selector.NumberSelectorMode.BOX)
+            selector.NumberSelectorConfig(
+                step=PRECISION_WHOLE, mode=selector.NumberSelectorMode.BOX
+            )
         ),
         vol.Required(CONF_FLOW): selector.NumberSelector(
             selector.NumberSelectorConfig(
-                step=0.1,
+                step=PRECISION_TENTHS,
                 unit_of_measurement=VOLUME_FLOW_RATE_LITRES_PER_MINUTE,
                 mode=selector.NumberSelectorMode.BOX,
             ),
         ),
         vol.Required(CONF_AREA): selector.NumberSelector(
             selector.NumberSelectorConfig(
-                step="0.1",
+                step=PRECISION_TENTHS,
                 unit_of_measurement=AREA_SQUARE_METERS,
                 mode=selector.NumberSelectorMode.BOX,
             ),
         ),
         vol.Required(CONF_SENSOR_TEMPERATURE): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(CONF_SENSOR_HUMIDITY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(CONF_SENSOR_PRESSURE): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(CONF_SENSOR_WINDSPEED): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
+        ),
+        vol.Required(CONF_WIND_MEASUREMENT_HEIGHT): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0.0,
+                step=PRECISION_TENTHS,
+                unit_of_measurement=LENGTH_METERS,
+                mode=selector.NumberSelectorMode.BOX,
+            ),
         ),
         vol.Required(CONF_SENSOR_SOLAR_RADIATION): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(CONF_SENSOR_PRECIPITATION): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor"),
+            selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(
             CONF_MAXIMUM_DURATION,
@@ -73,7 +92,7 @@ OPTIONS_SCHEMA = vol.Schema(
         ): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 min=0,
-                step=1,
+                step=PRECISION_WHOLE,
                 unit_of_measurement=TIME_SECONDS,
                 mode=selector.NumberSelectorMode.BOX,
             ),
@@ -84,7 +103,7 @@ OPTIONS_SCHEMA = vol.Schema(
 CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME, default=NAME): selector.TextSelector(
-            selector.TextSelectorConfig(type="text"),
+            selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT),
         ),
     }
 ).extend(OPTIONS_SCHEMA.schema)

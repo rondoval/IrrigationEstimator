@@ -1,5 +1,8 @@
 """Constants for the Smart Irrigation integration."""
 
+from homeassistant.const import Platform
+
+
 DOMAIN = "irrigation_estimator"
 NAME = "Irrigation Estimator"
 VERSION = "0.0.1"
@@ -10,19 +13,18 @@ ISSUE_URL = "https://github.com/rondoval/IrrigationEstimator/issues"
 ICON = "mdi:sprinkler"
 
 # Platforms
-SENSOR = "sensor"
-PLATFORMS = [SENSOR]
+PLATFORMS = [Platform.SENSOR]
+
+ATTR_THROUGHPUT = "throughput"
+ATTR_PRECIPITATION_RATE = "precipitation_rate"
+ATTR_PRECIPITATION = "precipitation"
 
 # Configuration and options
 CONF_NUMBER_OF_SPRINKLERS = "number_of_sprinklers"
 CONF_FLOW = "flow"
 CONF_AREA = "area"
-CONF_THROUGHPUT = "throughput"
-CONF_PRECIPITATION_RATE = "precipitation_rate"
-CONF_RAIN = "rain"
-CONF_SNOW = "snow"
-CONF_PRECIPITATION = "precipitation"
 CONF_MAXIMUM_DURATION = "maximum_duration"
+CONF_WIND_MEASUREMENT_HEIGHT = "wind_meas_height"
 
 # Sensors settings
 CONF_SENSOR_TEMPERATURE = "sensor_temperature"
@@ -40,7 +42,6 @@ ENTITY_BUCKET_DELTA = "bucket delta"
 
 # Services
 SERVICE_RESET_BUCKET = "reset_bucket"
-SERVICE_CALCULATE_DAILY_EVAPOTRANSPIRATION = "calculate_daily_et"
 
 # UNITS
 VOLUME_FLOW_RATE_LITRES_PER_MINUTE = "l/min"
