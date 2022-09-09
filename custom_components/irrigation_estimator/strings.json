@@ -42,7 +42,7 @@
     "step": {
       "init": {
         "data": {
-          "number_of_sprinklers": "[%key::component::irrigation_estimator::config::step::user::data::number_of_sprinklers%]",
+          "number_of_sprinklers": "Number of sprinklers",
           "flow": "Flow per sprinkler",
           "area": "Irrigated area",
           "sensor_temperature": "Sensor that measures current temperature",
@@ -54,7 +54,22 @@
           "precipitation_sensor_type": "Type of precipitation sensor",
           "maximum_duration": "Maximum duration",
           "wind_meas_height": "Height at which wind speed is measured"
+        },
+        "data_description": {
+          "number_of_sprinklers": "Number of sprinklers",
+          "flow": "Flow per sprinkler",
+          "area": "Irrigated area",
+          "sensor_temperature": "Sensor that measures current temperature",
+          "sensor_humidity": "Sensor that measures current relative humidity",
+          "sensor_pressure": "Sensor that measures current absolute pressure",
+          "sensor_windspeed": "Sensor that measures current windspeed",
+          "sensor_solar_radiation": "Sensor that measures current solar radiation",
+          "sensor_precipitation": "Sensor that measures total daily precipitation",
+          "precipitation_sensor_type": "Type of precipitation sensor",
+          "maximum_duration": "Maximum duration (0 - no limit)",
+          "wind_meas_height": "Height at which wind speed is measured"
         }
+
       }
     }
   }

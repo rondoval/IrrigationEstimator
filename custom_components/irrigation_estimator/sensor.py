@@ -11,13 +11,20 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    ATTR_UNIT_OF_MEASUREMENT,
+    LENGTH_METERS,
     LENGTH_MILLIMETERS,
+    MASS_KILOGRAMS,
+    PRESSURE_HPA,
+    SPEED_METERS_PER_SECOND,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
+    TEMP_CELSIUS,
     TIME_SECONDS,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_ELEVATION,
+    VOLUME_LITERS,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -26,7 +33,13 @@ from homeassistant.helpers.event import (
     async_track_time_change,
     async_track_state_change_event,
 )
-from .helpers import get_config_value, estimate_fao56_daily, MinMaxAvgTracker
+from homeassistant.util.unit_system import UnitSystem
+from .helpers import (
+    SunshineTracker,
+    get_config_value,
+    estimate_fao56_daily,
+    MinMaxAvgTracker,
+)
 
 from .const import (
     CONF_AREA,
@@ -51,6 +64,7 @@ from .const import (
     ENTITY_RUNTIME,
     ICON,
     OPTION_CUMULATIVE,
+    OPTION_HOURLY,
     SERVICE_RESET_BUCKET,
 )
 
@@ -84,6 +98,17 @@ class CalculationEngine:
         self._latitude = hass.config.as_dict().get(CONF_LATITUDE)
         self._longitude = hass.config.as_dict().get(CONF_LONGITUDE)
         self._elevation = hass.config.as_dict().get(CONF_ELEVATION)
+        self._units = UnitSystem(
+            name="eto units",
+            temperature=TEMP_CELSIUS,
+            length=LENGTH_METERS,
+            wind_speed=SPEED_METERS_PER_SECOND,
+            volume=VOLUME_LITERS,
+            mass=MASS_KILOGRAMS,
+            pressure=PRESSURE_HPA,
+            accumulated_precipitation=LENGTH_MILLIMETERS,
+        )
+
         self.number_of_sprinklers = get_config_value(
             config_entry, CONF_NUMBER_OF_SPRINKLERS
         )
@@ -116,21 +141,22 @@ class CalculationEngine:
             ),
         }
 
-        self._sunshine_hours = 4  # todo from radiaton sensor
-        self._temp_tracker = MinMaxAvgTracker()
-        self._wind_tracker = MinMaxAvgTracker()
-        self._rh_tracker = MinMaxAvgTracker()
-        self._pressure_tracker = MinMaxAvgTracker()
+        self.sunshine_tracker = SunshineTracker(3500)  # todo conf option
+        self.temp_tracker = MinMaxAvgTracker()
+        self.wind_tracker = MinMaxAvgTracker()
+        self.rh_tracker = MinMaxAvgTracker()
+        self.pressure_tracker = MinMaxAvgTracker()
 
-        self.evapotranspiration = 0  # todo restore
-        self.precipitation = 0.0  # todo restore
-        self.bucket_delta = 0.0  # todo restore
-        self.bucket = 0.0  # todo restore
-        self.runtime = 0  # todo restore
+        self.evapotranspiration = 0
+        self.precipitation = 0.0
+        self.bucket_delta = 0.0
+        self.bucket = 0.0
+        self.runtime = 0
 
         self._listeners: dict[CALLBACK_TYPE, CALLBACK_TYPE] = {}
         self._unsub_status: CALLBACK_TYPE | None = None
         self._unsub_time: CALLBACK_TYPE | None = None
+        self._unsub_hourly: CALLBACK_TYPE | None = None
 
     @callback
     def _subscribe_events(self):
@@ -145,6 +171,10 @@ class CalculationEngine:
             minute=0,
             second=10,
         )
+        if self._precipitation_sensor_type == OPTION_HOURLY:
+            self._unsub_hourly = async_track_time_change(
+                self.hass, self._update_hourly, minute=0, second=0
+            )
 
     @callback
     def _unsubscribe_events(self):
@@ -154,6 +184,9 @@ class CalculationEngine:
         if self._unsub_time:
             self._unsub_time()
             self._unsub_time = None
+        if self._unsub_hourly:
+            self._unsub_hourly()
+            self._unsub_hourly = None
 
     @callback
     def async_add_listener(self, update_callback: CALLBACK_TYPE):
@@ -189,22 +222,34 @@ class CalculationEngine:
         # TODO ugly
         entity_id = new_state.entity_id
         value = float(new_state.state)
+        unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+
         if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
-            self._temp_tracker.update(value)
+            self.temp_tracker.update(self._units.temperature(value, unit))
         if entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
-            self._rh_tracker.update(value)
+            self.rh_tracker.update(value)
         if entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
-            # todo convert units
-            self._wind_tracker.update(value)
+            self.wind_tracker.update(self._units.wind_speed(value, unit))
         if entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
-            self._pressure_tracker.update(value)
+            self.pressure_tracker.update(self._units.pressure(value, unit))
+        if entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
+            self.sunshine_tracker.update(value)
         if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
             if self._precipitation_sensor_type == OPTION_CUMULATIVE:
-                self.precipitation = value
-            else:
-                # todo should really be added once per hour - _update_hourly()?
-                self.precipitation += value
+                self.precipitation = self._units.accumulated_precipitation(value, unit)
 
+    @callback
+    def _update_hourly(self, _):
+        new_state = self.hass.states.get(self._sensors[CONF_SENSOR_PRECIPITATION])
+        if new_state is not None and new_state.state not in (
+            STATE_UNAVAILABLE,
+            STATE_UNKNOWN,
+        ):
+            value = float(new_state.state)
+            unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+            self.precipitation += self._units.accumulated_precipitation(value, unit)
+
+    @callback
     def _update_daily(self, _):
         self._update_eto()
         self._update_bucket()
@@ -227,10 +272,10 @@ class CalculationEngine:
         if all(
             x.is_tracking()
             for x in [
-                self._temp_tracker,
-                self._rh_tracker,
-                self._pressure_tracker,
-                self._wind_tracker,
+                self.temp_tracker,
+                self.rh_tracker,
+                self.pressure_tracker,
+                self.wind_tracker,
             ]
         ):
             eto = estimate_fao56_daily(
@@ -238,19 +283,20 @@ class CalculationEngine:
                 self._latitude,
                 self._elevation,
                 self._wind_meas_height,
-                self._temp_tracker.min,
-                self._temp_tracker.max,
-                self._rh_tracker.min,
-                self._rh_tracker.max,
-                self._pressure_tracker.avg,
-                self._wind_tracker.avg,
-                self._sunshine_hours,
+                self.temp_tracker.min,
+                self.temp_tracker.max,
+                self.rh_tracker.min,
+                self.rh_tracker.max,
+                self.pressure_tracker.avg,
+                self.wind_tracker.avg,
+                self.sunshine_tracker.get_hours(),
             )
             self.evapotranspiration = round(eto, 2)
-            self._wind_tracker.reset()
-            self._temp_tracker.reset()
-            self._rh_tracker.reset()
-            self._pressure_tracker.reset()
+            self.wind_tracker.reset()
+            self.temp_tracker.reset()
+            self.rh_tracker.reset()
+            self.pressure_tracker.reset()
+            self.sunshine_tracker.reset()
 
 
 class IrrigationSensor(RestoreSensor, SensorEntity):
@@ -304,6 +350,36 @@ class EvapotranspirationSensor(IrrigationSensor):
         self._attr_native_value = self.coordinator.evapotranspiration
         return super()._handle_coordinator_update()
 
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return {
+            "min_temp": self.coordinator.temp_tracker.min,
+            "max_temp": self.coordinator.temp_tracker.max,
+            "min_rh": self.coordinator.rh_tracker.min,
+            "max_rh": self.coordinator.rh_tracker.max,
+            "mean_wind": self.coordinator.wind_tracker.avg,
+            "mean_pressure": self.coordinator.pressure_tracker.avg,
+            "sunshine_hours": self.coordinator.sunshine_tracker.get_hours(),
+        }
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        data = await self.async_get_last_sensor_data()
+        self._attr_native_value = data.native_value
+        self.coordinator.evapotranspiration = data.native_value
+
+        data = await self.async_get_last_state()
+        self.coordinator.temp_tracker.min = data.attributes.get("min_temp")
+        self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
+        self.coordinator.rh_tracker.min = data.attributes.get("min_rh")
+        self.coordinator.rh_tracker.max = data.attributes.get("max_rh")
+        self.coordinator.wind_tracker.avg = data.attributes.get("mean_wind")
+        self.coordinator.pressure_tracker.avg = data.attributes.get("mean_pressure")
+        self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
+            hours=1
+        ) * data.attributes.get("sunshine_hours")
+
 
 class DailyBucketDelta(IrrigationSensor):
     """Daily precipitation-evapotranspiration delta"""
@@ -316,11 +392,6 @@ class DailyBucketDelta(IrrigationSensor):
         super().__init__(coordinator, config_entry, ENTITY_BUCKET_DELTA)
         self._attr_native_value = coordinator.bucket_delta
 
-    # async def async_added_to_hass(self):
-    #     if (data := await self.async_get_last_sensor_data()) is not None:
-    #         self._attr_native_value = data.native_value
-    #         self._rain = data.rain
-
     @callback
     def _handle_coordinator_update(self) -> None:
         self._attr_native_value = self.coordinator.bucket_delta
@@ -332,6 +403,15 @@ class DailyBucketDelta(IrrigationSensor):
         return {
             ATTR_PRECIPITATION: self.coordinator.precipitation,
         }
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        data = await self.async_get_last_sensor_data()
+        self._attr_native_value = data.native_value
+        self.coordinator.bucket_delta = data.native_value
+
+        data = await self.async_get_last_state()
+        self.coordinator.precipitation = data.attributes.get(ATTR_PRECIPITATION)
 
 
 class CumulativeBucket(IrrigationSensor):
@@ -365,6 +445,12 @@ class CumulativeBucket(IrrigationSensor):
         self._attr_native_value = self.coordinator.bucket
         return super()._handle_coordinator_update()
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        data = await self.async_get_last_sensor_data()
+        self._attr_native_value = data.native_value
+        self.coordinator.bucket = data.native_value
+
 
 class CumulativeRunTime(IrrigationSensor):
     """Daily run time"""
@@ -382,6 +468,12 @@ class CumulativeRunTime(IrrigationSensor):
     def _handle_coordinator_update(self) -> None:
         self._attr_native_value = self.coordinator.runtime
         return super()._handle_coordinator_update()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        data = await self.async_get_last_sensor_data()
+        self._attr_native_value = data.native_value
+        self.coordinator.runtime = data.native_value
 
     @property
     def extra_state_attributes(self):

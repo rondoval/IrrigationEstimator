@@ -1,7 +1,7 @@
 {
   "domain": "irrigation_estimator",
   "name": "Irrigation Estimator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "documentation": "https://github.com/rondoval/HASmartIrrigation",
   "issue_tracker": "https://github.com/rondoval/HASmartIrrigation/issues",
   "dependencies": [],

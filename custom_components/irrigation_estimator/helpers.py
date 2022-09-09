@@ -1,5 +1,6 @@
 """Helper functions."""
 
+from datetime import datetime, timedelta
 from ..irrigation_estimator import pyeto
 from homeassistant.config_entries import ConfigEntry
 from typing import Any
@@ -43,6 +44,29 @@ class MinMaxAvgTracker:
     def is_tracking(self):
         """Check if data is available"""
         return all(item is not None for item in [self.min, self.max, self.avg])
+
+
+class SunshineTracker:
+    """Calculates amount of bright sunshine hours based on input value that is related to solar radiation"""
+
+    def __init__(self, radiation_watermark: float) -> None:
+        self._radiation_watermark = radiation_watermark
+        self._timestamp: datetime = None
+        self.sunshine_hours = timedelta(seconds=0)
+
+    def reset(self) -> None:
+        """Resets the internal counter"""
+        self.sunshine_hours = timedelta(seconds=0)
+
+    def update(self, radiation: float) -> None:
+        """Updates counters using a new value"""
+        if self._timestamp is not None and radiation >= self._radiation_watermark:
+            self.sunshine_hours += datetime.now() - self._timestamp
+        self._timestamp = datetime.now()
+
+    def get_hours(self) -> float:
+        """Returns amount of sunshine hours counted"""
+        return self.sunshine_hours / timedelta(hours=1)
 
 
 def estimate_fao56_daily(
