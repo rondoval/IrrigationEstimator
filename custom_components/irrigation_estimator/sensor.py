@@ -172,7 +172,7 @@ class CalculationEngine:
             minute=0,
             second=10,
         )
-        self._unsub_update_entities = async_track_state_change_event(
+        self._unsub_update_entities = async_track_time_change(
             self.hass,
             self._update_entities,
             second=40,
