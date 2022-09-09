@@ -157,6 +157,7 @@ class CalculationEngine:
         self._unsub_status: CALLBACK_TYPE | None = None
         self._unsub_time: CALLBACK_TYPE | None = None
         self._unsub_hourly: CALLBACK_TYPE | None = None
+        self._unsub_update_entities: CALLBACK_TYPE | None = None
 
     @callback
     def _subscribe_events(self):
@@ -170,6 +171,11 @@ class CalculationEngine:
             hour=0,
             minute=0,
             second=10,
+        )
+        self._unsub_update_entities = async_track_state_change_event(
+            self.hass,
+            self._update_entities,
+            second=40,
         )
         if self._precipitation_sensor_type == OPTION_HOURLY:
             self._unsub_hourly = async_track_time_change(
@@ -187,6 +193,9 @@ class CalculationEngine:
         if self._unsub_hourly:
             self._unsub_hourly()
             self._unsub_hourly = None
+        if self._unsub_update_entities:
+            self._unsub_update_entities()
+            self._unsub_update_entities = None
 
     @callback
     def async_add_listener(self, update_callback: CALLBACK_TYPE):
@@ -237,6 +246,10 @@ class CalculationEngine:
         if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
             if self._precipitation_sensor_type == OPTION_CUMULATIVE:
                 self.precipitation = self._units.accumulated_precipitation(value, unit)
+
+    @callback
+    def _update_entities(self, _):
+        self._async_update_listeners()
 
     @callback
     def _update_hourly(self, _):
@@ -374,7 +387,9 @@ class EvapotranspirationSensor(IrrigationSensor):
             self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
             self.coordinator.rh_tracker.min = data.attributes.get("min_rh")
             self.coordinator.rh_tracker.max = data.attributes.get("max_rh")
-            self.coordinator.wind_tracker.avg = data.attributes.get("mean_wind")
+            self.coordinator.wind_tracker.avg = data.attributes.get(
+                "mean_wind"
+            )  # todo this will note restore average
             self.coordinator.pressure_tracker.avg = data.attributes.get("mean_pressure")
             self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
                 hours=1
