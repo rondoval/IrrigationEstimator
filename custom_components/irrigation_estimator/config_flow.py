@@ -22,6 +22,7 @@ from homeassistant.helpers.schema_config_entry_flow import (
 )
 
 from .const import (
+    CONF_ACCURATE_SOLAR_RADIATION,
     CONF_AREA,
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
@@ -89,6 +90,9 @@ OPTIONS_SCHEMA = vol.Schema(
             selector.EntitySelectorConfig(domain=Platform.SENSOR),
         ),
         vol.Required(
+            CONF_ACCURATE_SOLAR_RADIATION, default=False
+        ): selector.BooleanSelector(),
+        vol.Required(
             CONF_SOLAR_RADIATION_THRESHOLD, default=DEFAULT_SOLAR_RADIATION_THRESHOLD
         ): selector.NumberSelector(
             selector.NumberSelectorConfig(
@@ -110,6 +114,7 @@ OPTIONS_SCHEMA = vol.Schema(
                         value=OPTION_HOURLY, label="hourly average"
                     ),
                 ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
             ),
         ),
         vol.Required(
