@@ -33,8 +33,10 @@ from .const import (
     CONF_SENSOR_SOLAR_RADIATION,
     CONF_SENSOR_TEMPERATURE,
     CONF_SENSOR_WINDSPEED,
+    CONF_SOLAR_RADIATION_THRESHOLD,
     CONF_WIND_MEASUREMENT_HEIGHT,
     DEFAULT_MAXIMUM_DURATION,
+    DEFAULT_SOLAR_RADIATION_THRESHOLD,
     DOMAIN,
     NAME,
     OPTION_CUMULATIVE,
@@ -85,6 +87,15 @@ OPTIONS_SCHEMA = vol.Schema(
         ),
         vol.Required(CONF_SENSOR_SOLAR_RADIATION): selector.EntitySelector(
             selector.EntitySelectorConfig(domain=Platform.SENSOR),
+        ),
+        vol.Required(
+            CONF_SOLAR_RADIATION_THRESHOLD, default=DEFAULT_SOLAR_RADIATION_THRESHOLD
+        ): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0,
+                step=1,
+                mode=selector.NumberSelectorMode.BOX,
+            ),
         ),
         vol.Required(CONF_SENSOR_PRECIPITATION): selector.EntitySelector(
             selector.EntitySelectorConfig(domain=Platform.SENSOR),

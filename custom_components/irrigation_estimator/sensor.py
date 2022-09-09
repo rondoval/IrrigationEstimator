@@ -56,6 +56,7 @@ from .const import (
     CONF_SENSOR_WINDSPEED,
     CONF_SENSOR_TEMPERATURE,
     ATTR_THROUGHPUT,
+    CONF_SOLAR_RADIATION_THRESHOLD,
     CONF_WIND_MEASUREMENT_HEIGHT,
     DOMAIN,
     ENTITY_BUCKET,
@@ -119,6 +120,9 @@ class CalculationEngine:
         self._precipitation_sensor_type = get_config_value(
             config_entry, CONF_PRECIPITATION_SENSOR_TYPE
         )
+        self._solar_radiation_threshold = get_config_value(
+            config_entry, CONF_SOLAR_RADIATION_THRESHOLD
+        )
         self.maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
         self._wind_meas_height = get_config_value(
             config_entry, CONF_WIND_MEASUREMENT_HEIGHT
@@ -135,13 +139,13 @@ class CalculationEngine:
             ),
             CONF_SENSOR_SOLAR_RADIATION: get_config_value(
                 config_entry, CONF_SENSOR_SOLAR_RADIATION
-            ),  # todo selector real radiation sensor or calc sunshine above threshold
+            ),  # todo selector real radiation sensor or calc sunshine above threshold. handle radiation units conversion
             CONF_SENSOR_PRECIPITATION: get_config_value(
                 config_entry, CONF_SENSOR_PRECIPITATION
             ),
         }
 
-        self.sunshine_tracker = SunshineTracker(3500)  # todo conf option
+        self.sunshine_tracker = SunshineTracker(self._solar_radiation_threshold)
         self.temp_tracker = MinMaxAvgTracker()
         self.wind_tracker = MinMaxAvgTracker()
         self.rh_tracker = MinMaxAvgTracker()
@@ -378,18 +382,18 @@ class EvapotranspirationSensor(IrrigationSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if data := await self.async_get_last_sensor_data() is not None:
+        if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
             self.coordinator.evapotranspiration = data.native_value
 
-        if data := await self.async_get_last_state() is not None:
+        if data := await self.async_get_last_state():
             self.coordinator.temp_tracker.min = data.attributes.get("min_temp")
             self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
             self.coordinator.rh_tracker.min = data.attributes.get("min_rh")
             self.coordinator.rh_tracker.max = data.attributes.get("max_rh")
             self.coordinator.wind_tracker.avg = data.attributes.get(
                 "mean_wind"
-            )  # todo this will note restore average
+            )  # todo this will note restore average, it is internally stored as total/count
             self.coordinator.pressure_tracker.avg = data.attributes.get("mean_pressure")
             self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
                 hours=1
@@ -421,11 +425,11 @@ class DailyBucketDelta(IrrigationSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if data := await self.async_get_last_sensor_data() is not None:
+        if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
             self.coordinator.bucket_delta = data.native_value
 
-        if data := await self.async_get_last_state() is not None:
+        if data := await self.async_get_last_state():
             self.coordinator.precipitation = data.attributes.get(ATTR_PRECIPITATION)
 
 
@@ -462,7 +466,7 @@ class CumulativeBucket(IrrigationSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if data := await self.async_get_last_sensor_data() is not None:
+        if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
             self.coordinator.bucket = data.native_value
 
@@ -486,7 +490,7 @@ class CumulativeRunTime(IrrigationSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if data := await self.async_get_last_sensor_data() is not None:
+        if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
             self.coordinator.runtime = data.native_value
 

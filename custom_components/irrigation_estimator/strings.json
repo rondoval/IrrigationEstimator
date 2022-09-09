@@ -14,26 +14,28 @@
           "sensor_humidity": "Humidity sensor",
           "sensor_pressure": "Pressure sensor",
           "sensor_windspeed": "Wind speed sensor",
+          "wind_meas_height": "Wind speed measurement height",
           "sensor_solar_radiation": "Solar radiation sensor",
+          "solar_radiation_threshold": "Solar radiation threshold",
           "sensor_precipitation": "Precipitation sensor",
           "precipitation_sensor_type": "Type of precipitation sensor",
-          "maximum_duration": "Maximum duration",
-          "wind_meas_height": "Height at which wind speed is measured"
+          "maximum_duration": "Maximum runtime duration"
         },
         "data_description": {
-          "name": "Unique name of the instance",
-          "number_of_sprinklers": "Number of sprinklers",
-          "flow": "Flow per sprinkler",
-          "area": "Irrigated area",
-          "sensor_temperature": "Sensor that measures current temperature",
-          "sensor_humidity": "Sensor that measures current relative humidity",
-          "sensor_pressure": "Sensor that measures current absolute pressure",
-          "sensor_windspeed": "Sensor that measures current windspeed",
-          "sensor_solar_radiation": "Sensor that measures current solar radiation",
-          "sensor_precipitation": "Sensor that measures total daily precipitation",
-          "precipitation_sensor_type": "Type of precipitation sensor",
-          "maximum_duration": "Maximum duration (0 - no limit)",
-          "wind_meas_height": "Height at which wind speed is measured"
+          "name": "Unique name for the integration.",
+          "number_of_sprinklers": "Amount of sprinklers on the irrigated area.",
+          "flow": "Average flow of all sprinklers.",
+          "area": "",
+          "sensor_temperature": "This should measure current outside temperature.",
+          "sensor_humidity": "This should measure current relative humidity.",
+          "sensor_pressure": "This should measure actual pressure (not at sea level!).",
+          "sensor_windspeed": "This should measure current wind speed.",
+          "wind_meas_height": "Height at which wind speed is measured",
+          "sensor_solar_radiation": "Solar radiation sensor",
+          "solar_radiation_threshold": "This is used to calculate sunshine hours.",
+          "sensor_precipitation": "Choose sensortype below.",
+          "precipitation_sensor_type": "Either cumulative (total rainfall during the day) or hourly (rainfall during last hour).",
+          "maximum_duration": "This is capping runtime duration sensor."
         }
       }
     }
@@ -45,31 +47,32 @@
           "number_of_sprinklers": "Number of sprinklers",
           "flow": "Flow per sprinkler",
           "area": "Irrigated area",
-          "sensor_temperature": "Sensor that measures current temperature",
-          "sensor_humidity": "Sensor that measures current relative humidity",
-          "sensor_pressure": "Sensor that measures current absolute pressure",
-          "sensor_windspeed": "Sensor that measures current windspeed",
-          "sensor_solar_radiation": "Sensor that measures current solar radiation",
-          "sensor_precipitation": "Sensor that measures total daily precipitation",
+          "sensor_temperature": "Temperature sensor",
+          "sensor_humidity": "Humidity sensor",
+          "sensor_pressure": "Pressure sensor",
+          "sensor_windspeed": "Wind speed sensor",
+          "wind_meas_height": "Wind speed measurement height",
+          "sensor_solar_radiation": "Solar radiation sensor",
+          "solar_radiation_threshold": "Solar radiation threshold",
+          "sensor_precipitation": "Precipitation sensor",
           "precipitation_sensor_type": "Type of precipitation sensor",
-          "maximum_duration": "Maximum duration",
-          "wind_meas_height": "Height at which wind speed is measured"
+          "maximum_duration": "Maximum runtime duration"
         },
         "data_description": {
-          "number_of_sprinklers": "Number of sprinklers",
-          "flow": "Flow per sprinkler",
-          "area": "Irrigated area",
-          "sensor_temperature": "Sensor that measures current temperature",
-          "sensor_humidity": "Sensor that measures current relative humidity",
-          "sensor_pressure": "Sensor that measures current absolute pressure",
-          "sensor_windspeed": "Sensor that measures current windspeed",
-          "sensor_solar_radiation": "Sensor that measures current solar radiation",
-          "sensor_precipitation": "Sensor that measures total daily precipitation",
-          "precipitation_sensor_type": "Type of precipitation sensor",
-          "maximum_duration": "Maximum duration (0 - no limit)",
-          "wind_meas_height": "Height at which wind speed is measured"
+          "number_of_sprinklers": "Amount of sprinklers on the irrigated area.",
+          "flow": "Average flow of all sprinklers.",
+          "area": "",
+          "sensor_temperature": "This should measure current outside temperature.",
+          "sensor_humidity": "This should measure current relative humidity.",
+          "sensor_pressure": "This should measure actual pressure (not at sea level!).",
+          "sensor_windspeed": "This should measure current wind speed.",
+          "wind_meas_height": "Height at which wind speed is measured",
+          "sensor_solar_radiation": "Solar radiation sensor",
+          "solar_radiation_threshold": "This is used to calculate sunshine hours.",
+          "sensor_precipitation": "Choose sensortype below.",
+          "precipitation_sensor_type": "Either cumulative (total rainfall during the day) or hourly (rainfall during last hour).",
+          "maximum_duration": "This is capping runtime duration sensor."
         }
-
       }
     }
   }

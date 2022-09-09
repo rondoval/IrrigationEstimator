@@ -32,6 +32,7 @@ CONF_SENSOR_HUMIDITY = "sensor_humidity"
 CONF_SENSOR_PRESSURE = "sensor_pressure"
 CONF_SENSOR_WINDSPEED = "sensor_windspeed"
 CONF_SENSOR_SOLAR_RADIATION = "sensor_solar_radiation"
+CONF_SOLAR_RADIATION_THRESHOLD = "solar_radiation_threshold"
 CONF_SENSOR_PRECIPITATION = "sensor_precipitation"
 CONF_PRECIPITATION_SENSOR_TYPE = "precipitation_sensor_type"
 
@@ -53,3 +54,4 @@ VOLUME_FLOW_RATE_LITRES_PER_MINUTE = "l/min"
 
 # OPTIONS DEFAULTS
 DEFAULT_MAXIMUM_DURATION = 0  # seconds
+DEFAULT_SOLAR_RADIATION_THRESHOLD = 3500
