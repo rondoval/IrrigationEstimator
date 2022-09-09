@@ -1,16 +1,3 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
-
-[![Support the author on Patreon][patreon-shield]][patreon]
-
-[![Buy me a coffee][buymeacoffee-shield]][buymeacoffee]
-
-[patreon-shield]: https://frenck.dev/wp-content/uploads/2019/12/patreon.png
-[patreon]: https://www.patreon.com/dutchdatadude
-
-[buymeacoffee]: https://www.buymeacoffee.com/dutchdatadude
-[buymeacoffee-shield]: https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png
-
-
 # Smart Irrigation
 ![](logo.png?raw=true)
 
@@ -209,14 +196,7 @@ Here is an example automation that runs when the `smart_irrigation_start` event 
 After setting up the component, you can use the options flow to configure the following:
 | Option | Description | Default |
 | --- | --- | --- |
-|Lead time|Time in seconds to add to any irrigation. Very useful if your system needs to handle another task first, such as building up pressure.| 0|
-|~~Change percentage~~|~~Percentage to change adjusted run time by. For example, you want to run 80% of the calculated adjusted run time, enter 80 here. Or, if you want to run 150% of the calculated adjusted run time, enter 150.~~|~~100~~|
 |Maximum duration| Maximum duration in seconds for any irrigation, including any `lead_time`. -1 means no maximum.|-1|
-|Show units|If enabled, attributes values will show units. By default units will be hidden for attribute values.|False|
-|Automatic refresh|By default, automatic refresh is enabled. Disabling it will require the user to call `smart_irrigation.calculate_daily_adjusted_run_time` manually.|True|
-|Automatic refresh time|Specifies when to do the automatic refresh if enabled.|23:00|
-|Initial update delay|Delay before first sensor update after reboot. This is useful if using sensors that do not have a status right after reboot.|30|
-|Coastal|If the location you are tracking is situated on or adjacent to coast of a large land mass or anywhere else where air masses are influenced by a nearby water body, enable this setting.|False|
 |Solar Radiation calculation|From v0.0.50 onwards, the component estimates solar radiation using temperature, which seems to be more accurate. If for whatever reason you wanted to revert back to the pre v0.0.50 behavior (which used a estimation of sun hours) disable this.|True|
 
 ## Example behavior in a week
@@ -226,31 +206,6 @@ The component provides the following services:
 | Service | Description |
 | --- | --- |
 |`smart_irrigation.reset_bucket`|this service needs to be called after any irrigation so the bucket is reset to 0.|
-|`smart_irrigation.set_bucket`|call this service to set the bucket to the `value` you provide. This service should only be used for debugging purposes.|
-|`smart_irrigation.calculate_daily_adjusted_run_time`|calling this service results in the `smart_irrigation.daily_adjusted_run_time` entity and attributes to be updated right away.|
-|`smart_irrigation.calculate_hourly_adjusted_run_time`|calling this service results in the `smart_irrigation.hourly_adjusted_run_time` entity and attributes to be updated right away.|
-|`smart_irrigation.enable_force_mode`|Enables force mode. In this mode, `smart_irrigation.daily_adjusted_run_time` will also be set to the configured force mode duration.|
-|`smart_irrigation.disable_force_mode`|Disables force mode. Normal operation resumes.|
 
 ## How this works
 [See the Wiki](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/How-this-component-works).
-
-## Getting Open Weather Map API key
-Go to https://openweathermap.org and create an account. You can enter any company and purpose while creating an account. After creating your account, go to API Keys and get your key. If the key does not work right away, no worries. The email you should have received from OpenWeaterMap says it will be activated 'within the next couple of hours'. So if it does not work right away, be patient a bit.
-
-## Getting Monthly ET values
-To get the monthly ET values use Rainmaster (US only), World Water & Climate Institute (worldwide) or another source that has this information for your area. 
-> **When entering the ET values in the configuration of this component, keep in mind that the component will expect inches or mm depending on the settings in Home Assistant (imperial vs metric system).**
-
-### Using Rainmaster (US only)
-Go to http://www.rainmaster.com/historicET.aspx and enter your 5-digit zipcode and click 'Find'. The values you are looking for are listed for each month in inch/day:
-![](images/rainmaster.png?raw=true)
-
-### World Water & Climate Institute (International)
-Unfortunately the atlas linked below seems to be offline. Please refer to [this wiki page for country specific information](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/Country-specific-Evapotranspiration-info) and feel free to reach out to add your country specific info!
-Go to http://wcatlas.iwmi.org/ and create an account. Once logged in, enter the locations you are interested in and click 'Submit'. Be sure to select N/S and E/W according to your coordinates:
-![](images/iwmi1.PNG?raw=true)
-
-The values you are looking for are in the last column (Penman ETo (mm/day)):
-![](images/iwmi2.png?raw=true)
-
