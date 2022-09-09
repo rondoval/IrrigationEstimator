@@ -42,6 +42,7 @@ from .helpers import (
 )
 
 from .const import (
+    CONF_ACCURATE_SOLAR_RADIATION,
     CONF_AREA,
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
@@ -127,6 +128,9 @@ class CalculationEngine:
         self._wind_meas_height = get_config_value(
             config_entry, CONF_WIND_MEASUREMENT_HEIGHT
         )
+        self._accurate_solar_radiation = get_config_value(
+            config_entry, CONF_ACCURATE_SOLAR_RADIATION
+        )
 
         self._sensors = {
             CONF_SENSOR_TEMPERATURE: get_config_value(
@@ -139,13 +143,14 @@ class CalculationEngine:
             ),
             CONF_SENSOR_SOLAR_RADIATION: get_config_value(
                 config_entry, CONF_SENSOR_SOLAR_RADIATION
-            ),  # todo selector real radiation sensor or calc sunshine above threshold. handle radiation units conversion
+            ),
             CONF_SENSOR_PRECIPITATION: get_config_value(
                 config_entry, CONF_SENSOR_PRECIPITATION
             ),
         }
 
         self.sunshine_tracker = SunshineTracker(self._solar_radiation_threshold)
+        self._solar_radiation = 0.0
         self.temp_tracker = MinMaxAvgTracker()
         self.wind_tracker = MinMaxAvgTracker()
         self.rh_tracker = MinMaxAvgTracker()
@@ -246,7 +251,11 @@ class CalculationEngine:
         if entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
             self.pressure_tracker.update(self._units.pressure(value, unit))
         if entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
-            self.sunshine_tracker.update(value)
+            if self._accurate_solar_radiation:
+                # TODO if CONF_ACCURATE_SOLAR_RADIATION==True then use directly
+                self._solar_radiation = value
+            else:
+                self.sunshine_tracker.update(value)
         if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
             if self._precipitation_sensor_type == OPTION_CUMULATIVE:
                 self.precipitation = self._units.accumulated_precipitation(value, unit)
