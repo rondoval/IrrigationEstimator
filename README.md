@@ -1,14 +1,11 @@
-# Smart Irrigation
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+# Irrigation Estimator
 ![](logo.png?raw=true)
-
-> **Versions since v0.0.30 introduced a number of bugs. As a result we have reverted back to v0.0.29 and implemented bug fixes only from there. Versions from v0.0.40 onwards should work correctly. Change percentage feature has been removed while we work on bringing it back later. You will see references to it in the code as it has been temporarily removed from the options screen and any calculations. We apologize for any inconvenience caused.**
 
 Smart Irrigation custom component for Home Assistant. Partly based on the excellent work at https://github.com/hhaim/hass/.
 This component calculates the time to run your irrigation system to compensate for moisture lost by evaporation / evapotranspiration. Using this component you water your garden, lawn or crops precisely enough to compensate what has evaporated. It takes into account precipitation (rain,snow) and adjusts accordingly, so if it rains or snows less or no irrigation is required. By adding multiple instances of this component multiple zones can be supported as each zone will have its own sprinkler and flow configuration. 
 
 > **Note - use this component at your own risk - we do not assume responsibility for any inconvience caused by using this component. Always use common sense before deciding to irrigate using the calculations this component provides. For example, irrigating during excessive rainfall might cause flooding. Again - we assume no responsibility for any inconvience caused.**
-
-> **Note If you want to go back and change your settings afterwards, you can either delete the instance and re-create it or edit the entity registry under config/.storage at your own risk.**
 
 The component keeps track of hourly precipitation and at 23:00 (11:00 PM) local time stores it in a daily value.
 It then calculates the exact runtime in seconds to compensate for the net evaporation.
@@ -27,15 +24,6 @@ The component uses the [PyETo module to calculate the evapotranspiration value (
 5. Irrigation should be run for `daily_adjusted_run_time` amount of time (which is 0 is `bucket`>=0). Afterwards, the `bucket` needs to be reset (using `reset_bucket`). It's up to the user of the component to build the automation for this final step.
 
 There are many more options available, see below. To understand how `precipitation`, `netto precipitation`, the `bucket` and irrigation interact, see [example behavior on the Wiki](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/Example-behavior-in-a-week).
-
-## Operation modes
-You can use this component in various modes:
-1. **Full Open Weather Map**. In this mode all data comes from the Open Weather Map service. You will need to create and provide an API key. See [Getting Open Weater Map API Key](#getting-open-weather-map-api-key) below for instructions.
-2. **Full Sensors**. Using sensors. In this mode all data comes from sensors such as a weather station. When specificying a sensor for precipitation, note that it needs to be a cumulative daily sensor. Open Weather Map is not used and you do not need an API key.
-3. **Mixed**. A combination of 1) and 2). In this mode part of the data is supplied by sensors and part by Open Weather Map. In this mode you will need to create and provide an API key. See [Getting Open Weater Map API Key](#getting-open-weather-map-api-key) below for instructions. When specificying a sensor for precipitation, note that it needs to be a cumulative daily sensor.
-4. **Not calculating**. This mode allows you to skip the calculations of evapotranspiration all together and instead rely on a sensor to provide this value. In this mode, you will need to specify a precipitation sensor as well. Both of these need to be a cumulative daily sensor.
-
-When planning to set up mode 2) (Full Sensors), 3) (Mixed) or 4) (Not Calculating) see [Measurements and Units](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/Measurements-and-Units) for more information on the measurements and units expected by this component.
 
 ## Getting the best results
 In order to get the most accurate results using sensors is preferable either from your own weather station or from another, from example through [Weatherflow Smart Weather](https://github.com/briis/smartweather). If you have a weather station that provides evapotranspiration (ET) values, use that (mode 4). If you do not have that, use sensors including solar radiation (mode 3). If you do not have access to a sensor that provides solar radiation, let this component estimate it but use sensors for the other inputs (modified mode 3). If you do have access to limited amount of sensors (say only temperature) use that and use Open Weather Map for the rest (mode 2). If you do not have access to any sensors at all use Open Weather Map (mode 1).
@@ -85,15 +73,6 @@ For each instance of the component the following services will be available:
 |`smart_irrigation.[instance]_disable_force_mode`|Disables force mode.|
 |`smart_irrigation.]instance]_reset_bucket`|Resets the bucket to 0. Needs to be called after done irrigating (see below).|
 |`smart_irrigation.[instance]_set_bucket`|Sets the bucket to the provided `value`. Use for debugging only.|
-
-#### Events
-The component uses a number of events internally that you do not need to pay attention to unless you need to debug things. The exception is the `_start` event.
-| Event | Description|
-| --- | --- |
-|`[instance]_start`|Fires depending on `daily_adjusted_run_time` value and sunrise. You can listen to this event to optimize the moment you irrigate so your irrigation starts just before sunrise and is completed at sunrise. See below for examples on how to use this.|
-|`[instance]_bucketUpd`|Fired when the bucket is calculated. Happens at automatic refresh time or as a result of the `reset_bucket`, `set_bucket` or `calculate_daily_adjusted_run_time` service.|
-|`[instance]_forceModeTog`|Fired when the force mode is disabled or enabled. Result of calling `enable_force_mode` or `disable_force_mode`|
-|`[instance]_hourlyUpd`|Fired when the hourly adjusted run time is calculated. Happens approximately every hour and when `calculate_hourly_adjusted_run_time` service is called.|
 
 #### Entities
 #### `sensor.smart_irrigation_base_schedule_index`
