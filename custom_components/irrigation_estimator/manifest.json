@@ -1,0 +1,12 @@
+{
+  "domain": "irrigation_estimator",
+  "name": "Irrigation Estimator",
+  "version": "0.0.2",
+  "documentation": "https://github.com/rondoval/IrrigationEstimator",
+  "issue_tracker": "https://github.com/rondoval/IrrigationEstimator/issues",
+  "dependencies": [],
+  "codeowners": ["@rondoval"],
+  "config_flow": true,
+  "iot_class": "local_push",
+  "requirements": []
+}
