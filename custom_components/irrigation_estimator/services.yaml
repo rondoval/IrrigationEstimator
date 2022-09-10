@@ -1,2 +1,7 @@
 reset_bucket:
+  name: Reset bucket
   description: Reset the bucket to 0. Call this once watering is completed.
+  target:
+      entity:
+        integration: irrigation_estimator
+        domain: sensor

@@ -1,6 +1,8 @@
 """Helper functions."""
 
 from datetime import datetime, timedelta
+
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from ..irrigation_estimator import pyeto
 from homeassistant.config_entries import ConfigEntry
 from typing import Any
@@ -41,9 +43,25 @@ class MinMaxAvgTracker:
         self._count += 1
         self.avg = self._accumulator / self._count
 
+    def load_history(self, history_data) -> None:
+        """Loads stats from source sensor history"""
+        self.reset()
+        for state in history_data:
+            if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+                continue
+
+            val = float(state.state)
+            if self.min is None or self.min > val:
+                self.min = val
+            if self.max is None or self.max < val:
+                self.max = val
+            self._accumulator += val
+            self._count += 1
+        self.avg = self._accumulator / self._count
+
     def is_tracking(self):
         """Check if data is available"""
-        return all(item is not None for item in [self.min, self.max, self.avg])
+        return all(item is not None for item in (self.min, self.max, self.avg))
 
 
 class SunshineTracker:

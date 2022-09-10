@@ -1,6 +1,7 @@
 """SmartIrrigationEntity class."""
 from __future__ import annotations
 import datetime
+from functools import partial
 import logging
 
 from homeassistant.components.sensor import (
@@ -9,6 +10,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
@@ -27,6 +29,7 @@ from homeassistant.const import (
     VOLUME_LITERS,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
@@ -90,6 +93,9 @@ async def async_setup_entry(
             CumulativeRunTime(calc_engine, config_entry),
         ]
     )
+
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(SERVICE_RESET_BUCKET, {}, "async_reset")
 
 
 class CalculationEngine:
@@ -234,6 +240,7 @@ class CalculationEngine:
         if new_state is None or new_state.state in (
             STATE_UNKNOWN,
             STATE_UNAVAILABLE,
+            None,
         ):
             return
 
@@ -244,19 +251,19 @@ class CalculationEngine:
 
         if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
             self.temp_tracker.update(self._units.temperature(value, unit))
-        if entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
+        elif entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
             self.rh_tracker.update(value)
-        if entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
+        elif entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
             self.wind_tracker.update(self._units.wind_speed(value, unit))
-        if entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
+        elif entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
             self.pressure_tracker.update(self._units.pressure(value, unit))
-        if entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
+        elif entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
             if self._accurate_solar_radiation:
                 # TODO if CONF_ACCURATE_SOLAR_RADIATION==True then use directly
                 self._solar_radiation = value
             else:
                 self.sunshine_tracker.update(value)
-        if entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
+        elif entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
             if self._precipitation_sensor_type == OPTION_CUMULATIVE:
                 self.precipitation = self._units.accumulated_precipitation(value, unit)
 
@@ -324,6 +331,27 @@ class CalculationEngine:
             self.pressure_tracker.reset()
             self.sunshine_tracker.reset()
 
+    async def async_retrieve_history(self):
+        """Recreates avg records from base sensor history"""
+        if "recorder" not in self.hass.config.components:
+            return
+        for entity_id, tracker in (
+            (self._sensors[CONF_SENSOR_WINDSPEED], self.wind_tracker),
+            (self._sensors[CONF_SENSOR_PRESSURE], self.pressure_tracker),
+        ):
+            start = datetime.datetime.today().replace(hour=0, minute=0, second=0)
+            filter_history = await get_instance(self.hass).async_add_executor_job(
+                partial(
+                    history.state_changes_during_period,
+                    self.hass,
+                    start,
+                    entity_id=entity_id,
+                    no_attributes=True,
+                )
+            )
+            if entity_id in filter_history:
+                tracker.load_history(filter_history.get(entity_id, []))
+
 
 class IrrigationSensor(RestoreSensor, SensorEntity):
     """Smart Irrigation Entity."""
@@ -358,6 +386,10 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         self.async_write_ha_state()
+
+    @callback
+    def async_reset(self):
+        """Dummy call to avoid errors"""
 
 
 class EvapotranspirationSensor(IrrigationSensor):
@@ -400,13 +432,10 @@ class EvapotranspirationSensor(IrrigationSensor):
             self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
             self.coordinator.rh_tracker.min = data.attributes.get("min_rh")
             self.coordinator.rh_tracker.max = data.attributes.get("max_rh")
-            self.coordinator.wind_tracker.avg = data.attributes.get(
-                "mean_wind"
-            )  # todo this will note restore average, it is internally stored as total/count
-            self.coordinator.pressure_tracker.avg = data.attributes.get("mean_pressure")
             self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
                 hours=1
             ) * data.attributes.get("sunshine_hours")
+        await self.coordinator.async_retrieve_history()
 
 
 class DailyBucketDelta(IrrigationSensor):
@@ -456,17 +485,12 @@ class CumulativeBucket(IrrigationSensor):
         super().__init__(coordinator, config_entry, ENTITY_BUCKET)
         self._attr_native_value = coordinator.bucket
 
-        # register the services
-        hass.services.async_register(
-            DOMAIN,
-            f"{self._attr_name}_{SERVICE_RESET_BUCKET}",
-            self._reset,
-        )
-
     @callback
-    def _reset(self):
+    def async_reset(self):
+        """Resets the bucket"""
         self.coordinator.bucket = 0.0
         self._attr_native_value = 0.0
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -491,6 +515,13 @@ class CumulativeRunTime(IrrigationSensor):
     ) -> None:
         super().__init__(coordinator, config_entry, ENTITY_RUNTIME)
         self._attr_native_value = coordinator.runtime
+
+    @callback
+    def async_reset(self):
+        """Resets the runtime"""
+        self.coordinator.runtime = 0
+        self._attr_native_value = 0
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self) -> None:
