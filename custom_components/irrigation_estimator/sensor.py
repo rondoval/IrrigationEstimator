@@ -1,19 +1,23 @@
 """SmartIrrigationEntity class."""
 from __future__ import annotations
-import datetime
-from functools import partial
-import logging
 
+import datetime
+import logging
+from functools import partial
+
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.components.sensor import (
     RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.components.recorder import get_instance, history
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
+    CONF_ELEVATION,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
     LENGTH_METERS,
     LENGTH_MILLIMETERS,
     MASS_KILOGRAMS,
@@ -23,9 +27,6 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     TEMP_CELSIUS,
     TIME_SECONDS,
-    CONF_LATITUDE,
-    CONF_LONGITUDE,
-    CONF_ELEVATION,
     VOLUME_LITERS,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
@@ -33,33 +34,27 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
-    async_track_time_change,
     async_track_state_change_event,
+    async_track_time_change,
 )
 from homeassistant.util.unit_system import UnitSystem
-from .helpers import (
-    SunshineTracker,
-    get_config_value,
-    estimate_fao56_daily,
-    MinMaxAvgTracker,
-)
 
 from .const import (
+    ATTR_PRECIPITATION,
+    ATTR_PRECIPITATION_RATE,
+    ATTR_THROUGHPUT,
     CONF_ACCURATE_SOLAR_RADIATION,
     CONF_AREA,
     CONF_FLOW,
     CONF_MAXIMUM_DURATION,
     CONF_NUMBER_OF_SPRINKLERS,
-    ATTR_PRECIPITATION,
-    ATTR_PRECIPITATION_RATE,
     CONF_PRECIPITATION_SENSOR_TYPE,
     CONF_SENSOR_HUMIDITY,
     CONF_SENSOR_PRECIPITATION,
     CONF_SENSOR_PRESSURE,
     CONF_SENSOR_SOLAR_RADIATION,
-    CONF_SENSOR_WINDSPEED,
     CONF_SENSOR_TEMPERATURE,
-    ATTR_THROUGHPUT,
+    CONF_SENSOR_WINDSPEED,
     CONF_SOLAR_RADIATION_THRESHOLD,
     CONF_WIND_MEASUREMENT_HEIGHT,
     DOMAIN,
@@ -71,6 +66,12 @@ from .const import (
     OPTION_CUMULATIVE,
     OPTION_HOURLY,
     SERVICE_RESET_BUCKET,
+)
+from .helpers import (
+    MinMaxAvgTracker,
+    SunshineTracker,
+    estimate_fao56_daily,
+    get_config_value,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ class CalculationEngine:
         }
 
         self.sunshine_tracker = SunshineTracker(self._solar_radiation_threshold)
-        self._solar_radiation = 0.0
+        self.solar_radiation_tracker = MinMaxAvgTracker()
         self.temp_tracker = MinMaxAvgTracker()
         self.wind_tracker = MinMaxAvgTracker()
         self.rh_tracker = MinMaxAvgTracker()
@@ -244,11 +245,11 @@ class CalculationEngine:
         ):
             return
 
-        # TODO ugly
         entity_id = new_state.entity_id
         value = float(new_state.state)
         unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
 
+        # TODO ugly
         if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
             self.temp_tracker.update(self._units.temperature(value, unit))
         elif entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
@@ -259,8 +260,7 @@ class CalculationEngine:
             self.pressure_tracker.update(self._units.pressure(value, unit))
         elif entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
             if self._accurate_solar_radiation:
-                # TODO if CONF_ACCURATE_SOLAR_RADIATION==True then use directly
-                self._solar_radiation = value
+                self.solar_radiation_tracker.update(value)
             else:
                 self.sunshine_tracker.update(value)
         elif entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
@@ -322,6 +322,7 @@ class CalculationEngine:
                 self.rh_tracker.max,
                 self.pressure_tracker.avg,
                 self.wind_tracker.avg,
+                self.solar_radiation_tracker.avg,
                 self.sunshine_tracker.get_hours(),
             )
             self.evapotranspiration = round(eto, 2)
@@ -330,15 +331,25 @@ class CalculationEngine:
             self.rh_tracker.reset()
             self.pressure_tracker.reset()
             self.sunshine_tracker.reset()
+            self.solar_radiation_tracker.reset()
 
     async def async_retrieve_history(self):
         """Recreates avg records from base sensor history"""
         if "recorder" not in self.hass.config.components:
             return
-        for entity_id, tracker in (
+
+        to_update = [
             (self._sensors[CONF_SENSOR_WINDSPEED], self.wind_tracker),
             (self._sensors[CONF_SENSOR_PRESSURE], self.pressure_tracker),
-        ):
+        ]
+        if self._accurate_solar_radiation:
+            to_update.append(
+                (
+                    self._sensors[CONF_SENSOR_SOLAR_RADIATION],
+                    self.solar_radiation_tracker,
+                )
+            )
+        for entity_id, tracker in to_update:
             start = datetime.datetime.today().replace(hour=0, minute=0, second=0)
             filter_history = await get_instance(self.hass).async_add_executor_job(
                 partial(
@@ -419,6 +430,7 @@ class EvapotranspirationSensor(IrrigationSensor):
             "mean_wind": self.coordinator.wind_tracker.avg,
             "mean_pressure": self.coordinator.pressure_tracker.avg,
             "sunshine_hours": self.coordinator.sunshine_tracker.get_hours(),
+            "mean_radiation": self.coordinator.solar_radiation_tracker.avg,
         }
 
     async def async_added_to_hass(self) -> None:
@@ -428,6 +440,7 @@ class EvapotranspirationSensor(IrrigationSensor):
             self.coordinator.evapotranspiration = data.native_value
 
         if data := await self.async_get_last_state():
+            # No need to restore avg from history for these
             self.coordinator.temp_tracker.min = data.attributes.get("min_temp")
             self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
             self.coordinator.rh_tracker.min = data.attributes.get("min_rh")

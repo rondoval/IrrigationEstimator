@@ -1,7 +1,7 @@
 {
   "domain": "irrigation_estimator",
   "name": "Irrigation Estimator",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "documentation": "https://github.com/rondoval/IrrigationEstimator",
   "issue_tracker": "https://github.com/rondoval/IrrigationEstimator/issues",
   "dependencies": [],

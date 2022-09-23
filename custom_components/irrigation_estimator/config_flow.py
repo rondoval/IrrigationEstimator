@@ -7,11 +7,11 @@ from typing import Any, cast
 import voluptuous as vol
 from homeassistant.const import (
     AREA_SQUARE_METERS,
+    CONF_NAME,
     LENGTH_METERS,
     PRECISION_TENTHS,
     PRECISION_WHOLE,
     TIME_SECONDS,
-    CONF_NAME,
     Platform,
 )
 from homeassistant.helpers import selector

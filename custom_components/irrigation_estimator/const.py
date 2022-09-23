@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "irrigation_estimator"
 NAME = "Irrigation Estimator"
-VERSION = "0.0.2"
+VERSION = "1.0.0"
 
 ISSUE_URL = "https://github.com/rondoval/IrrigationEstimator/issues"
 
@@ -56,3 +56,5 @@ VOLUME_FLOW_RATE_LITRES_PER_MINUTE = "l/min"
 # OPTIONS DEFAULTS
 DEFAULT_MAXIMUM_DURATION = 0  # seconds
 DEFAULT_SOLAR_RADIATION_THRESHOLD = 3500
+
+CONVERT_W_M2_TO_MJ_M2_DAY = 0.0864

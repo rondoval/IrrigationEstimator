@@ -1,11 +1,13 @@
 """Helper functions."""
 
 from datetime import datetime, timedelta
-
-from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from ..irrigation_estimator import pyeto
-from homeassistant.config_entries import ConfigEntry
 from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+
+from ..irrigation_estimator import pyeto
+from .const import CONVERT_W_M2_TO_MJ_M2_DAY
 
 
 def get_config_value(config_entry: ConfigEntry, key: str) -> Any:
@@ -57,11 +59,12 @@ class MinMaxAvgTracker:
                 self.max = val
             self._accumulator += val
             self._count += 1
-        self.avg = self._accumulator / self._count
+        if self._count > 0:
+            self.avg = self._accumulator / self._count
 
     def is_tracking(self):
         """Check if data is available"""
-        return all(item is not None for item in (self.min, self.max, self.avg))
+        return any(item is not None for item in (self.min, self.max, self.avg))
 
 
 class SunshineTracker:
@@ -98,7 +101,8 @@ def estimate_fao56_daily(
     rh_max,  # 24h max relative humidity [%]
     atmos_pres,  # 24h avg atm. pressure, absolute [hPa]
     wind_m_s,  # 24h avg wind speed [m/s]
-    sunshine_hours,  # 24h sunshine hours
+    sol_rad=None,  # solar radioation [W*m-2]
+    sunshine_hours=None,  # 24h sunshine hours
 ):
 
     """Estimate fao56 from weather."""
@@ -118,9 +122,12 @@ def estimate_fao56_daily(
         pyeto.inv_rel_dist_earth_sun(day_of_year),
     )
 
-    sol_rad = pyeto.sol_rad_from_sun_hours(
-        pyeto.daylight_hours(sha), sunshine_hours, et_rad
-    )
+    if sol_rad is None:
+        sol_rad = pyeto.sol_rad_from_sun_hours(
+            pyeto.daylight_hours(sha), sunshine_hours, et_rad
+        )
+    else:
+        sol_rad *= CONVERT_W_M2_TO_MJ_M2_DAY
 
     net_in_sol_rad = pyeto.net_in_sol_rad(sol_rad, 0.23)
     net_out_lw_rad = pyeto.net_out_lw_rad(
