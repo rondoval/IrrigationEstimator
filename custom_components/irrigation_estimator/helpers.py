@@ -137,8 +137,8 @@ def estimate_fao56_daily(
 
     net_in_sol_rad = aquacropeto.net_in_sol_rad(sol_rad, 0.23)
     net_out_lw_rad = aquacropeto.net_out_lw_rad(
-        aquacropeto.convert.celsius2kelvin(temp_c_min),
-        aquacropeto.convert.celsius2kelvin(temp_c_max),
+        aquacropeto.celsius2kelvin(temp_c_min),
+        aquacropeto.celsius2kelvin(temp_c_max),
         sol_rad,
         aquacropeto.cs_rad(elevation, et_rad),
         avp,
@@ -147,7 +147,7 @@ def estimate_fao56_daily(
 
     eto = aquacropeto.fao56_penman_monteith(
         net_rad=net_rad,
-        t=aquacropeto.convert.celsius2kelvin(temp_c_mean),
+        t=aquacropeto.celsius2kelvin(temp_c_mean),
         ws=aquacropeto.wind_speed_2m(wind_m_s, wind_meas_height),
         svp=svp,
         avp=avp,
