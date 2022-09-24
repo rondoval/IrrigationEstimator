@@ -6,7 +6,8 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 
-from ..irrigation_estimator import pyeto
+import aquacropeto
+
 from .const import CONVERT_W_M2_TO_MJ_M2_DAY
 
 
@@ -106,47 +107,52 @@ def estimate_fao56_daily(
 ):
 
     """Estimate fao56 from weather."""
-    temp_c_mean = pyeto.daily_mean_t(temp_c_min, temp_c_max)
+    temp_c_mean = aquacropeto.daily_mean_t(temp_c_min, temp_c_max)
 
-    svp = pyeto.mean_svp(temp_c_min, temp_c_max)
-    avp = pyeto.avp_from_rhmin_rhmax(
-        pyeto.svp_from_t(temp_c_min), pyeto.svp_from_t(temp_c_max), rh_min, rh_max
+    svp = aquacropeto.mean_svp(temp_c_min, temp_c_max)
+    avp = aquacropeto.avp_from_rhmin_rhmax(
+        aquacropeto.svp_from_t(temp_c_min),
+        aquacropeto.svp_from_t(temp_c_max),
+        rh_min,
+        rh_max,
     )
 
-    sha = pyeto.sunset_hour_angle(pyeto.deg2rad(latitude), pyeto.sol_dec(day_of_year))
+    sha = aquacropeto.sunset_hour_angle(
+        aquacropeto.deg2rad(latitude), aquacropeto.sol_dec(day_of_year)
+    )
 
-    et_rad = pyeto.et_rad(
-        pyeto.deg2rad(latitude),
-        pyeto.sol_dec(day_of_year),
+    et_rad = aquacropeto.et_rad(
+        aquacropeto.deg2rad(latitude),
+        aquacropeto.sol_dec(day_of_year),
         sha,
-        pyeto.inv_rel_dist_earth_sun(day_of_year),
+        aquacropeto.inv_rel_dist_earth_sun(day_of_year),
     )
 
     if sol_rad is None:
-        sol_rad = pyeto.sol_rad_from_sun_hours(
-            pyeto.daylight_hours(sha), sunshine_hours, et_rad
+        sol_rad = aquacropeto.sol_rad_from_sun_hours(
+            aquacropeto.daylight_hours(sha), sunshine_hours, et_rad
         )
     else:
         sol_rad *= CONVERT_W_M2_TO_MJ_M2_DAY
 
-    net_in_sol_rad = pyeto.net_in_sol_rad(sol_rad, 0.23)
-    net_out_lw_rad = pyeto.net_out_lw_rad(
-        pyeto.convert.celsius2kelvin(temp_c_min),
-        pyeto.convert.celsius2kelvin(temp_c_max),
+    net_in_sol_rad = aquacropeto.net_in_sol_rad(sol_rad, 0.23)
+    net_out_lw_rad = aquacropeto.net_out_lw_rad(
+        aquacropeto.convert.celsius2kelvin(temp_c_min),
+        aquacropeto.convert.celsius2kelvin(temp_c_max),
         sol_rad,
-        pyeto.cs_rad(elevation, et_rad),
+        aquacropeto.cs_rad(elevation, et_rad),
         avp,
     )
-    net_rad = pyeto.net_rad(net_in_sol_rad, net_out_lw_rad)
+    net_rad = aquacropeto.net_rad(net_in_sol_rad, net_out_lw_rad)
 
-    eto = pyeto.fao56_penman_monteith(
+    eto = aquacropeto.fao56_penman_monteith(
         net_rad=net_rad,
-        t=pyeto.convert.celsius2kelvin(temp_c_mean),
-        ws=pyeto.wind_speed_2m(wind_m_s, wind_meas_height),
+        t=aquacropeto.convert.celsius2kelvin(temp_c_mean),
+        ws=aquacropeto.wind_speed_2m(wind_m_s, wind_meas_height),
         svp=svp,
         avp=avp,
-        delta_svp=pyeto.delta_svp(temp_c_mean),
-        psy=pyeto.psy_const(
+        delta_svp=aquacropeto.delta_svp(temp_c_mean),
+        psy=aquacropeto.psy_const(
             atmos_pres / 10
         ),  # value stored is in hPa, but needs to be provided in kPa
         shf=0,
