@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "Irrigation Estimator setup",
         "description": "If you need help with the configuration, please see https://github.com/rondoval/IrrigationEstimator",
         "data": {
           "name": "Name",
