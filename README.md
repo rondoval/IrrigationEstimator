@@ -4,17 +4,25 @@
 
 **_Note_ This is not updated.**
 
-Smart Irrigation custom component for Home Assistant. Partly based on the excellent work at https://github.com/hhaim/hass/.
-This component calculates the time to run your irrigation system to compensate for moisture lost by evaporation / evapotranspiration. Using this component you water your garden, lawn or crops precisely enough to compensate what has evaporated. It takes into account precipitation (rain,snow) and adjusts accordingly, so if it rains or snows less or no irrigation is required. By adding multiple instances of this component multiple zones can be supported as each zone will have its own sprinkler and flow configuration.
+Irrigation Estimator custom component for Home Assistant. Based on https://github.com/jeroenterheerdt/HAsmartirrigation.
+Compared to HAsmartirrigation there are several changes:
+- This component does not use reference evapotranspiration values
+- It does not interact with OpenWeatherMap API. Simply select proper sensors from a separate OpenWeatherMap integration.
+- It does not provide events for starting irrigation.
 
-> **Note - use this component at your own risk - we do not assume responsibility for any inconvience caused by using this component. Always use common sense before deciding to irrigate using the calculations this component provides. For example, irrigating during excessive rainfall might cause flooding. Again - we assume no responsibility for any inconvience caused.**
+Bear in mind this is just an evapotranspiration model. It does not take into account:
+- Water loss due to other factors, as an example water sinking deeper into the ground.
+- Future weather conditions, e.g. if the forecast is it will be raining - it's on you to not schedule watering.
 
-The component keeps track of hourly precipitation and at 23:00 (11:00 PM) local time stores it in a daily value.
-It then calculates the exact runtime in seconds to compensate for the net evaporation.
-Note that this is the default behavior and this can be disabled if you want more control. Also, the time auto refresh happens (if not disabled) is configurable.
-This is all the component does, and this is on purpose to provide maximum flexibility. Users are expected to use the value of `sensor.smart_irrigation.daily_adjusted_run_time` to interact with their irrigation system and afterwards call the `smart_irrigation.reset_bucket` service. [See the example automations below](#step-3-creating-automation).
+What this component does, is it provides three sensors that are updated at midnight each day:
+- Evapotranspiration
+- Bucket delta - difference between precipitation and evapotranspiration over the previous day, i.e. moisture lost yesterday
+- Bucket - accumulated bucket deltas.
+- Run time - the time needed to run your irrigation system to compensate for the moisture loss accumulated in the bucket.
 
-This component uses reference evapotranspiration values and calculates base schedule indexes and water budgets from that. This is an industry-standard approach. Information can be found at https://www.rainbird.com/professionals/irrigation-scheduling-use-et-save-water, amongst others.
+This uses the fao56 model from [lib]. Note this is for the reference crop as specified in [].
+
+https://www.rainbird.com/professionals/irrigation-scheduling-use-et-save-water.
 The component uses the [PyETo module to calculate the evapotranspiration value (fao56)](https://pyeto.readthedocs.io/en/latest/fao56_penman_monteith.html). Also, please see the [How this works](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/How-this-component-works) Wiki page.
 
 ## Visual representation of what this component does
@@ -83,10 +91,6 @@ Attributes:
 |`area`|the total area the irrigation system reaches in m<sup>2</sup> or sq ft.|
 |`precipitation rate`|the output of the irrigation system across the whole area in mm or inch per hour|
 
-Sample screenshot:
-
-![](images/bsi_entity.png?raw=true)
-
 #### `sensor.smart_irrigation_hourly_adjusted_run_time`
 
 The adjusted run time in seconds to compensate for any net moisture lost. Updated approx. every 60 minutes.
@@ -97,10 +101,6 @@ Attributes:
 |`evapotranspiration`|the expected evapotranspiration|
 |`netto precipitation`|the net evapotranspiration in mm or inch, negative values mean more moisture is lost than gets added by rain/snow, while positive values mean more moisture is added by rain/snow than what evaporates, equal to `precipitation - evapotranspiration`|
 |`adjusted run time minutes`|adjusted run time in minutes instead of seconds.|
-
-Sample screenshot:
-
-![](images/hart.png?raw=true)
 
 #### `sensor.smart_irrigation_daily_adjusted_run_time`
 
