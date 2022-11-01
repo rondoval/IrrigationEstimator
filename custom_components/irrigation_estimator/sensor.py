@@ -93,7 +93,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
-
     calc_engine = CalculationEngine(hass, config_entry)
 
     async_add_entities(
@@ -110,9 +109,10 @@ async def async_setup_entry(
 
 
 class CalculationEngine:
-    """Listens to sensors and makes backend calculations"""
+    """Listens to sensors and makes backend calculations."""
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        """Initialize the ET calculation engine."""
         self.hass = hass
         self._latitude = hass.config.as_dict().get(CONF_LATITUDE)
         self._longitude = hass.config.as_dict().get(CONF_LONGITUDE)
@@ -215,7 +215,7 @@ class CalculationEngine:
 
     @callback
     def async_add_listener(self, update_callback: CALLBACK_TYPE):
-        """Subscribe to updates"""
+        """Subscribe to updates."""
         subscribe = not self._listeners
 
         @callback
@@ -344,7 +344,7 @@ class CalculationEngine:
             self.solar_radiation_tracker.reset()
 
     async def async_retrieve_history(self):
-        """Recreates avg records from base sensor history"""
+        """Recreates avg records from base sensor history."""
         if "recorder" not in self.hass.config.components:
             return
 
@@ -411,17 +411,18 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
 
     @callback
     def async_reset(self):
-        """Dummy call to avoid errors"""
+        """Do nothing."""
 
 
 class EvapotranspirationSensor(IrrigationSensor):
-    """Daily evapotranspiration"""
+    """Daily evapotranspiration."""
 
     _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
+        """Initialize the evapotranspiration sensor."""
         super().__init__(coordinator, config_entry, ENTITY_EVAPOTRANSPIRATION)
         self._attr_native_value = coordinator.evapotranspiration
 
@@ -445,6 +446,7 @@ class EvapotranspirationSensor(IrrigationSensor):
         }
 
     async def async_added_to_hass(self) -> None:
+        """Restore state once added to hass."""
         await super().async_added_to_hass()
         if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
@@ -463,13 +465,14 @@ class EvapotranspirationSensor(IrrigationSensor):
 
 
 class DailyBucketDelta(IrrigationSensor):
-    """Daily precipitation-evapotranspiration delta"""
+    """Daily precipitation-evapotranspiration delta."""
 
     _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
+        """Initialize the bucket delta sensor."""
         super().__init__(coordinator, config_entry, ENTITY_BUCKET_DELTA)
         self._attr_native_value = coordinator.bucket_delta
 
@@ -486,6 +489,7 @@ class DailyBucketDelta(IrrigationSensor):
         }
 
     async def async_added_to_hass(self) -> None:
+        """Restore state once added to hass."""
         await super().async_added_to_hass()
         if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
@@ -496,7 +500,7 @@ class DailyBucketDelta(IrrigationSensor):
 
 
 class CumulativeBucket(IrrigationSensor):
-    """Daily cumulative bucket"""
+    """Daily cumulative bucket."""
 
     _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
@@ -505,12 +509,13 @@ class CumulativeBucket(IrrigationSensor):
         coordinator: CalculationEngine,
         config_entry: ConfigEntry,
     ) -> None:
+        """Initialize the cumulative bucket sensor."""
         super().__init__(coordinator, config_entry, ENTITY_BUCKET)
         self._attr_native_value = coordinator.bucket
 
     @callback
     def async_reset(self):
-        """Resets the bucket"""
+        """Reset the bucket."""
         self.coordinator.bucket = 0.0
         self._attr_native_value = 0.0
         self.async_write_ha_state()
@@ -521,6 +526,7 @@ class CumulativeBucket(IrrigationSensor):
         return super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
+        """Restore state once added to hass."""
         await super().async_added_to_hass()
         if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value
@@ -528,7 +534,7 @@ class CumulativeBucket(IrrigationSensor):
 
 
 class CumulativeRunTime(IrrigationSensor):
-    """Daily run time"""
+    """Daily run time."""
 
     _attr_native_unit_of_measurement = TIME_SECONDS
     _attr_device_class = SensorDeviceClass.DURATION
@@ -536,12 +542,13 @@ class CumulativeRunTime(IrrigationSensor):
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
     ) -> None:
+        """Initialize the cumulative run time sensor."""
         super().__init__(coordinator, config_entry, ENTITY_RUNTIME)
         self._attr_native_value = coordinator.runtime
 
     @callback
     def async_reset(self):
-        """Resets the runtime"""
+        """Reset the run time."""
         self.coordinator.runtime = 0
         self._attr_native_value = 0
         self.async_write_ha_state()
@@ -552,6 +559,7 @@ class CumulativeRunTime(IrrigationSensor):
         return super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
+        """Restore state once added to hass."""
         await super().async_added_to_hass()
         if data := await self.async_get_last_sensor_data():
             self._attr_native_value = data.native_value

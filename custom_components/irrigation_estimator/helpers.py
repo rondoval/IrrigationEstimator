@@ -12,16 +12,17 @@ from .const import CONVERT_W_M2_TO_MJ_M2_DAY
 
 
 def get_config_value(config_entry: ConfigEntry, key: str) -> Any:
-    """Get val from options or initial config"""
+    """Get val from options or initial config."""
     if config_entry.options:
         return config_entry.options[key]
     return config_entry.data[key]
 
 
 class MinMaxAvgTracker:
-    """Tracking min, max and avg of a sensor"""
+    """Tracking min, max and avg of a sensor."""
 
     def __init__(self):
+        """Initialize the tracker."""
         self.min = None
         self.max = None
         self.avg = None
@@ -29,7 +30,7 @@ class MinMaxAvgTracker:
         self._count = 0
 
     def reset(self):
-        """Reset values, restart tracking"""
+        """Reset values, restart tracking."""
         self.min = None
         self.max = None
         self.avg = None
@@ -37,7 +38,7 @@ class MinMaxAvgTracker:
         self._count = 0
 
     def update(self, new_value):
-        """Update with new value"""
+        """Update with new value."""
         if self.min is None or self.min > new_value:
             self.min = new_value
         if self.max is None or self.max < new_value:
@@ -47,7 +48,7 @@ class MinMaxAvgTracker:
         self.avg = self._accumulator / self._count
 
     def load_history(self, history_data) -> None:
-        """Loads stats from source sensor history"""
+        """Load stats from source sensor history."""
         self.reset()
         for state in history_data:
             if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
@@ -64,30 +65,31 @@ class MinMaxAvgTracker:
             self.avg = self._accumulator / self._count
 
     def is_tracking(self):
-        """Check if data is available"""
+        """Check if data is available."""
         return any(item is not None for item in (self.min, self.max, self.avg))
 
 
 class SunshineTracker:
-    """Calculates amount of bright sunshine hours based on input value that is related to solar radiation"""
+    """Calculates amount of bright sunshine hours based on input value that is related to solar radiation."""
 
     def __init__(self, radiation_watermark: float) -> None:
+        """Initialize the tracker."""
         self._radiation_watermark = radiation_watermark
         self._timestamp: datetime = None
         self.sunshine_hours = timedelta(seconds=0)
 
     def reset(self) -> None:
-        """Resets the internal counter"""
+        """Reset the internal counter."""
         self.sunshine_hours = timedelta(seconds=0)
 
     def update(self, radiation: float) -> None:
-        """Updates counters using a new value"""
+        """Update counters using a new value."""
         if self._timestamp is not None and radiation >= self._radiation_watermark:
             self.sunshine_hours += datetime.now() - self._timestamp
         self._timestamp = datetime.now()
 
     def get_hours(self) -> float:
-        """Returns amount of sunshine hours counted"""
+        """Return amount of sunshine hours counted."""
         return self.sunshine_hours / timedelta(hours=1)
 
 
@@ -105,7 +107,6 @@ def estimate_fao56_daily(
     sol_rad=None,  # solar radioation [W*m-2]
     sunshine_hours=None,  # 24h sunshine hours
 ):
-
     """Estimate fao56 from weather."""
     temp_c_mean = aquacropeto.daily_mean_t(temp_c_min, temp_c_max)
 
