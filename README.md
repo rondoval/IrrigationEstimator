@@ -31,14 +31,9 @@ There are many more options available, see below. To understand how `precipitati
 
 ## Getting the best results
 
-In order to get the most accurate results using sensors is preferable either from your own weather station or from another, from example through [Weatherflow Smart Weather](https://github.com/briis/smartweather). If you have a weather station that provides evapotranspiration (ET) values, use that (mode 4). If you do not have that, use sensors including solar radiation (mode 3). If you do not have access to a sensor that provides solar radiation, let this component estimate it but use sensors for the other inputs (modified mode 3). If you do have access to limited amount of sensors (say only temperature) use that and use Open Weather Map for the rest (mode 2). If you do not have access to any sensors at all use Open Weather Map (mode 1).
+In order to get the most accurate results using sensors is preferable. You can substitute missing data using a weather component, e.g. OpenWeatherMap.
 
-Since this component provides multiple configuration options it might get confusing about in which scenario what behavior can be expected and what input is required. In the table below we summarize the configuration modes, their accuracy, the required input and how daily adjusted run time is calculated. Keep in mind that daily adjusted run time is based on the netto precipitation (precipitation - evapotranspiration) and the bucket value for previous days.
-|Mode|Accuracy|Input|How adjusted run time is calculated|
-|---|---|---|---|
-|Mode 1 - Full Open Weather Map|Low|No sensor input required, just an API key for Open Weather Map|Average of precipitation and evapotranspiration.|
-|Mode 2 - Full Sensor, but calculating evapotranspiration|High|Sensors are required for all inputs. All inputs are expected to be point-in-time, _except precipitation_. That sensor is normally provided by a weather station or weather service as a daily accumulative / 'total precipitation today' sensor and that is what is expected by the component|Most recent value for precipitation and average of evapotranspiration.
-|Mode 3 - Mixed|Medium|API key is required for any inputs that have not been provided sensors. All inputs are expected to be point-in-time, _except precipitation_. That sensor is normally provided by a weather station or weather service as a 'total precipitation today' sensor and that is what is expected by the component|If a sensor is provided for precipitation, most recent value for precipitation is used. Otherwise the average of both precipitation and evapotranspiration.|
+TODO list sensors needed and options
 
 ## Configuration
 
@@ -54,8 +49,6 @@ Install the custom component (preferably using HACS) and then use the Configurat
 You will need to specify the following:
 
 - Names of sensors that supply required measurements (optional). Only required in mode 2) and 3). See [Measurements and Units](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/Measurements-and-Units) for more information on the measurements and units expected by this component.
-- API Key for Open Weather Map (optional). Only required in mode 1) and 3). See [Getting Open Weater Map API Key](#getting-open-weather-map-api-key) below for instructions.
-- Reference Evapotranspiration for all months of the year. See [Getting Monthly ET values](#getting-monthly-et-values) below for instructions. Note that you can specify these in inches or mm, depending on your Home Assistant settings.
 - Number of sprinklers in your irrigation system
 - Flow per spinkler in gallons per minute or liters per minute. Refer to your sprinkler's manual for this information.
 - Area that the sprinklers cover in square feet or m<sup>2</sup>
@@ -154,5 +147,3 @@ Here is an example automation that runs when the `smart_irrigation_start` event 
   - data: {}
     service: smart_irrigation.reset_bucket
 ```
-
-[See more advanced examples in the Wiki](https://github.com/jeroenterheerdt/HAsmartirrigation/wiki/Automation-examples).

@@ -8,11 +8,11 @@ import voluptuous as vol
 from homeassistant.const import (
     AREA_SQUARE_METERS,
     CONF_NAME,
-    LENGTH_METERS,
     PRECISION_TENTHS,
     PRECISION_WHOLE,
     TIME_SECONDS,
     Platform,
+    UnitOfLength,
 )
 from homeassistant.helpers import selector
 from homeassistant.helpers.schema_config_entry_flow import (
@@ -82,7 +82,7 @@ OPTIONS_SCHEMA = vol.Schema(
             selector.NumberSelectorConfig(
                 min=0.0,
                 step=PRECISION_TENTHS,
-                unit_of_measurement=LENGTH_METERS,
+                unit_of_measurement=UnitOfLength.METERS,
                 mode=selector.NumberSelectorMode.BOX,
             ),
         ),

@@ -18,16 +18,13 @@ from homeassistant.const import (
     CONF_ELEVATION,
     CONF_LATITUDE,
     CONF_LONGITUDE,
-    LENGTH_METERS,
-    LENGTH_MILLIMETERS,
-    MASS_KILOGRAMS,
-    PRESSURE_HPA,
-    SPEED_METERS_PER_SECOND,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
-    TEMP_CELSIUS,
     TIME_SECONDS,
-    VOLUME_LITERS,
+    UnitOfLength,
+    UnitOfPressure,
+    UnitOfSpeed,
+    UnitOfTemperature,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_platform
@@ -37,11 +34,24 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
 )
-from homeassistant.util.unit_system import UnitSystem
+from homeassistant.util.unit_conversion import (
+    DistanceConverter,
+    PressureConverter,
+    SpeedConverter,
+    TemperatureConverter,
+)
 
 from .const import (
+    ATTR_MAX_RH,
+    ATTR_MAX_TEMP,
+    ATTR_MEAN_PRESSURE,
+    ATTR_MEAN_RADIATION,
+    ATTR_MEAN_WIND,
+    ATTR_MIN_RH,
+    ATTR_MIN_TEMP,
     ATTR_PRECIPITATION,
     ATTR_PRECIPITATION_RATE,
+    ATTR_SUNSHINE_HOURS,
     ATTR_THROUGHPUT,
     CONF_ACCURATE_SOLAR_RADIATION,
     CONF_AREA,
@@ -90,7 +100,7 @@ async def async_setup_entry(
         [
             EvapotranspirationSensor(calc_engine, config_entry),
             DailyBucketDelta(calc_engine, config_entry),
-            CumulativeBucket(hass, calc_engine, config_entry),
+            CumulativeBucket(calc_engine, config_entry),
             CumulativeRunTime(calc_engine, config_entry),
         ]
     )
@@ -107,16 +117,6 @@ class CalculationEngine:
         self._latitude = hass.config.as_dict().get(CONF_LATITUDE)
         self._longitude = hass.config.as_dict().get(CONF_LONGITUDE)
         self._elevation = hass.config.as_dict().get(CONF_ELEVATION)
-        self._units = UnitSystem(
-            name="eto units",
-            temperature=TEMP_CELSIUS,
-            length=LENGTH_METERS,
-            wind_speed=SPEED_METERS_PER_SECOND,
-            volume=VOLUME_LITERS,
-            mass=MASS_KILOGRAMS,
-            pressure=PRESSURE_HPA,
-            accumulated_precipitation=LENGTH_MILLIMETERS,
-        )
 
         self.number_of_sprinklers = get_config_value(
             config_entry, CONF_NUMBER_OF_SPRINKLERS
@@ -251,13 +251,19 @@ class CalculationEngine:
 
         # TODO ugly
         if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
-            self.temp_tracker.update(self._units.temperature(value, unit))
+            self.temp_tracker.update(
+                TemperatureConverter.convert(value, unit, UnitOfTemperature.CELSIUS)
+            )
         elif entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
             self.rh_tracker.update(value)
         elif entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
-            self.wind_tracker.update(self._units.wind_speed(value, unit))
+            self.wind_tracker.update(
+                SpeedConverter.convert(value, unit, UnitOfSpeed.METERS_PER_SECOND)
+            )
         elif entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
-            self.pressure_tracker.update(self._units.pressure(value, unit))
+            self.pressure_tracker.update(
+                PressureConverter.convert(value, unit, UnitOfPressure.HPA)
+            )
         elif entity_id == self._sensors[CONF_SENSOR_SOLAR_RADIATION]:
             if self._accurate_solar_radiation:
                 self.solar_radiation_tracker.update(value)
@@ -265,7 +271,9 @@ class CalculationEngine:
                 self.sunshine_tracker.update(value)
         elif entity_id == self._sensors[CONF_SENSOR_PRECIPITATION]:
             if self._precipitation_sensor_type == OPTION_CUMULATIVE:
-                self.precipitation = self._units.accumulated_precipitation(value, unit)
+                self.precipitation = DistanceConverter.convert(
+                    value, unit, UnitOfLength.MILLIMETERS
+                )
 
     @callback
     def _update_entities(self, _):
@@ -280,7 +288,9 @@ class CalculationEngine:
         ):
             value = float(new_state.state)
             unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-            self.precipitation += self._units.accumulated_precipitation(value, unit)
+            self.precipitation += DistanceConverter.convert(
+                value, unit, UnitOfLength.MILLIMETERS
+            )
 
     @callback
     def _update_daily(self, _):
@@ -368,6 +378,7 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
     """Smart Irrigation Entity."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_icon = ICON
 
@@ -380,7 +391,7 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
         """Initialize the entity."""
         self.coordinator = coordinator
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_name}"
-        self._attr_name = f"{config_entry.title} {sensor_name}"
+        self._attr_name = sensor_name
         self._attr_device_info = DeviceInfo(
             name=config_entry.title,
             identifiers={(DOMAIN, config_entry.entry_id)},
@@ -406,7 +417,7 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
 class EvapotranspirationSensor(IrrigationSensor):
     """Daily evapotranspiration"""
 
-    _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
+    _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
@@ -423,14 +434,14 @@ class EvapotranspirationSensor(IrrigationSensor):
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {
-            "min_temp": self.coordinator.temp_tracker.min,
-            "max_temp": self.coordinator.temp_tracker.max,
-            "min_rh": self.coordinator.rh_tracker.min,
-            "max_rh": self.coordinator.rh_tracker.max,
-            "mean_wind": self.coordinator.wind_tracker.avg,
-            "mean_pressure": self.coordinator.pressure_tracker.avg,
-            "sunshine_hours": self.coordinator.sunshine_tracker.get_hours(),
-            "mean_radiation": self.coordinator.solar_radiation_tracker.avg,
+            ATTR_MIN_TEMP: self.coordinator.temp_tracker.min,
+            ATTR_MAX_TEMP: self.coordinator.temp_tracker.max,
+            ATTR_MIN_RH: self.coordinator.rh_tracker.min,
+            ATTR_MAX_RH: self.coordinator.rh_tracker.max,
+            ATTR_MEAN_WIND: self.coordinator.wind_tracker.avg,
+            ATTR_MEAN_PRESSURE: self.coordinator.pressure_tracker.avg,
+            ATTR_SUNSHINE_HOURS: self.coordinator.sunshine_tracker.get_hours(),
+            ATTR_MEAN_RADIATION: self.coordinator.solar_radiation_tracker.avg,
         }
 
     async def async_added_to_hass(self) -> None:
@@ -441,20 +452,20 @@ class EvapotranspirationSensor(IrrigationSensor):
 
         if data := await self.async_get_last_state():
             # No need to restore avg from history for these
-            self.coordinator.temp_tracker.min = data.attributes.get("min_temp")
-            self.coordinator.temp_tracker.max = data.attributes.get("max_temp")
-            self.coordinator.rh_tracker.min = data.attributes.get("min_rh")
-            self.coordinator.rh_tracker.max = data.attributes.get("max_rh")
+            self.coordinator.temp_tracker.min = data.attributes.get(ATTR_MIN_TEMP)
+            self.coordinator.temp_tracker.max = data.attributes.get(ATTR_MAX_TEMP)
+            self.coordinator.rh_tracker.min = data.attributes.get(ATTR_MIN_RH)
+            self.coordinator.rh_tracker.max = data.attributes.get(ATTR_MAX_RH)
             self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
                 hours=1
-            ) * data.attributes.get("sunshine_hours")
+            ) * data.attributes.get(ATTR_SUNSHINE_HOURS)
         await self.coordinator.async_retrieve_history()
 
 
 class DailyBucketDelta(IrrigationSensor):
     """Daily precipitation-evapotranspiration delta"""
 
-    _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
+    _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
@@ -487,11 +498,10 @@ class DailyBucketDelta(IrrigationSensor):
 class CumulativeBucket(IrrigationSensor):
     """Daily cumulative bucket"""
 
-    _attr_native_unit_of_measurement = LENGTH_MILLIMETERS
+    _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
 
     def __init__(
         self,
-        hass: HomeAssistant,
         coordinator: CalculationEngine,
         config_entry: ConfigEntry,
     ) -> None:

@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "irrigation_estimator"
 NAME = "Irrigation Estimator"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 ISSUE_URL = "https://github.com/rondoval/IrrigationEstimator/issues"
 
@@ -18,6 +18,14 @@ PLATFORMS = [Platform.SENSOR]
 ATTR_THROUGHPUT = "throughput"
 ATTR_PRECIPITATION_RATE = "precipitation_rate"
 ATTR_PRECIPITATION = "precipitation"
+ATTR_MIN_TEMP = "min_temp"
+ATTR_MAX_TEMP = "max_temp"
+ATTR_MIN_RH = "min_rh"
+ATTR_MAX_RH = "max_rh"
+ATTR_MEAN_WIND = "mean_wind"
+ATTR_MEAN_PRESSURE = "mean_pressure"
+ATTR_SUNSHINE_HOURS = "sunshine_hours"
+ATTR_MEAN_RADIATION = "mean_radiation"
 
 # Configuration and options
 CONF_NUMBER_OF_SPRINKLERS = "number_of_sprinklers"
@@ -38,10 +46,10 @@ CONF_SENSOR_PRECIPITATION = "sensor_precipitation"
 CONF_PRECIPITATION_SENSOR_TYPE = "precipitation_sensor_type"
 
 # Entities
-ENTITY_EVAPOTRANSPIRATION = "evapotranspiration"
-ENTITY_RUNTIME = "run time"
-ENTITY_BUCKET = "bucket"
-ENTITY_BUCKET_DELTA = "bucket delta"
+ENTITY_EVAPOTRANSPIRATION = "Evapotranspiration"
+ENTITY_RUNTIME = "Run time"
+ENTITY_BUCKET = "Bucket"
+ENTITY_BUCKET_DELTA = "Bucket delta"
 
 # Selector values
 OPTION_CUMULATIVE = "cumulative"
