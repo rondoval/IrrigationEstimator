@@ -1,12 +1,12 @@
 {
   "domain": "irrigation_estimator",
   "name": "Irrigation Estimator",
-  "version": "1.0.3",
-  "documentation": "https://github.com/rondoval/IrrigationEstimator",
-  "issue_tracker": "https://github.com/rondoval/IrrigationEstimator/issues",
-  "dependencies": ["recorder"],
   "codeowners": ["@rondoval"],
   "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/rondoval/IrrigationEstimator",
   "iot_class": "local_push",
-  "requirements": ["aquacropeto==0.1.1"]
+  "issue_tracker": "https://github.com/rondoval/IrrigationEstimator/issues",
+  "requirements": ["aquacropeto==0.1.1"],
+  "version": "1.0.3"
 }
