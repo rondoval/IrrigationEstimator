@@ -40,6 +40,7 @@ from homeassistant.util.unit_conversion import (
     SpeedConverter,
     TemperatureConverter,
 )
+import homeassistant.util.dt as dt_util
 
 from .const import (
     ATTR_MAX_RH,
@@ -360,7 +361,7 @@ class CalculationEngine:
                 )
             )
         for entity_id, tracker in to_update:
-            start = datetime.datetime.today().replace(hour=0, minute=0, second=0)
+            start = dt_util.start_of_local_day()
             filter_history = await get_instance(self.hass).async_add_executor_job(
                 partial(
                     history.state_changes_during_period,
