@@ -159,4 +159,4 @@ def estimate_fao56_daily(
         shf=0,
     )
 
-    return eto
+    return float(eto)

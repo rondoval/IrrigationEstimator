@@ -8,5 +8,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/rondoval/IrrigationEstimator/issues",
   "requirements": ["aquacropeto==0.1.1"],
-  "version": "1.0.3"
+  "version": "1.0.4"
 }

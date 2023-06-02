@@ -5,3 +5,10 @@ reset_bucket:
       entity:
         integration: irrigation_estimator
         domain: sensor
+force_daily_update:
+  name: Force daily update
+  description: Force ET0 calculation, reset of environmental trackers and update of bucket and run time.
+  target:
+   entity:
+    integration: irrigation_estimator
+    domain: sensor

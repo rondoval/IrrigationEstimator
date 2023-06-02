@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "irrigation_estimator"
 NAME = "Irrigation Estimator"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 ISSUE_URL = "https://github.com/rondoval/IrrigationEstimator/issues"
 
@@ -57,6 +57,7 @@ OPTION_HOURLY = "hourly"
 
 # Services
 SERVICE_RESET_BUCKET = "reset_bucket"
+SERVICE_FORCE_DAILY_UPDATE = "force_daily_update"
 
 # UNITS
 VOLUME_FLOW_RATE_LITRES_PER_MINUTE = "l/min"

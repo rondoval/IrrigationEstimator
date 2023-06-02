@@ -20,7 +20,7 @@ from homeassistant.const import (
     CONF_LONGITUDE,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
-    TIME_SECONDS,
+    UnitOfTime,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
@@ -77,6 +77,7 @@ from .const import (
     OPTION_CUMULATIVE,
     OPTION_HOURLY,
     SERVICE_RESET_BUCKET,
+    SERVICE_FORCE_DAILY_UPDATE,
 )
 from .helpers import (
     MinMaxAvgTracker,
@@ -107,6 +108,9 @@ async def async_setup_entry(
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(SERVICE_RESET_BUCKET, {}, "async_reset")
+    platform.async_register_entity_service(
+        SERVICE_FORCE_DAILY_UPDATE, {}, "async_update_daily"
+    )
 
 
 class CalculationEngine:
@@ -184,7 +188,7 @@ class CalculationEngine:
         )
         self._unsub_time = async_track_time_change(
             self.hass,
-            self._update_daily,
+            self.update_daily,
             hour=0,
             minute=0,
             second=10,
@@ -294,7 +298,8 @@ class CalculationEngine:
             )
 
     @callback
-    def _update_daily(self, _):
+    def update_daily(self, _):
+        """Performs daily calculations"""
         self._update_eto()
         self._update_bucket()
         self._update_runtime()
@@ -414,6 +419,10 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
     def async_reset(self):
         """Do nothing."""
 
+    @callback
+    def async_update_daily(self):
+        """Do nothing."""
+
 
 class EvapotranspirationSensor(IrrigationSensor):
     """Daily evapotranspiration."""
@@ -435,16 +444,27 @@ class EvapotranspirationSensor(IrrigationSensor):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return {
-            ATTR_MIN_TEMP: self.coordinator.temp_tracker.min,
-            ATTR_MAX_TEMP: self.coordinator.temp_tracker.max,
-            ATTR_MIN_RH: self.coordinator.rh_tracker.min,
-            ATTR_MAX_RH: self.coordinator.rh_tracker.max,
-            ATTR_MEAN_WIND: self.coordinator.wind_tracker.avg,
-            ATTR_MEAN_PRESSURE: self.coordinator.pressure_tracker.avg,
-            ATTR_SUNSHINE_HOURS: self.coordinator.sunshine_tracker.get_hours(),
-            ATTR_MEAN_RADIATION: self.coordinator.solar_radiation_tracker.avg,
+        attributes = {
+            ATTR_SUNSHINE_HOURS: self.coordinator.sunshine_tracker.get_hours()
         }
+
+        if self.coordinator.temp_tracker.min:
+            attributes[ATTR_MIN_TEMP] = self.coordinator.temp_tracker.min
+        if self.coordinator.temp_tracker.max:
+            attributes[ATTR_MAX_TEMP] = self.coordinator.temp_tracker.max
+        if self.coordinator.rh_tracker.min:
+            attributes[ATTR_MIN_RH] = self.coordinator.rh_tracker.min
+        if self.coordinator.rh_tracker.max:
+            attributes[ATTR_MAX_RH] = self.coordinator.rh_tracker.max
+        if self.coordinator.wind_tracker.avg:
+            attributes[ATTR_MEAN_WIND] = self.coordinator.wind_tracker.avg
+        if self.coordinator.pressure_tracker.avg:
+            attributes[ATTR_MEAN_PRESSURE] = self.coordinator.pressure_tracker.avg
+        if self.coordinator.solar_radiation_tracker.avg:
+            attributes[
+                ATTR_MEAN_RADIATION
+            ] = self.coordinator.solar_radiation_tracker.avg
+        return attributes
 
     async def async_added_to_hass(self) -> None:
         """Restore state once added to hass."""
@@ -463,6 +483,11 @@ class EvapotranspirationSensor(IrrigationSensor):
                 hours=1
             ) * data.attributes.get(ATTR_SUNSHINE_HOURS)
         await self.coordinator.async_retrieve_history()
+
+    @callback
+    def async_update_daily(self):
+        self.coordinator.update_daily(None)
+        return super().async_update_daily()
 
 
 class DailyBucketDelta(IrrigationSensor):
@@ -537,7 +562,7 @@ class CumulativeBucket(IrrigationSensor):
 class CumulativeRunTime(IrrigationSensor):
     """Daily run time."""
 
-    _attr_native_unit_of_measurement = TIME_SECONDS
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_device_class = SensorDeviceClass.DURATION
 
     def __init__(
