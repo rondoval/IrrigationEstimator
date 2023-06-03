@@ -2,13 +2,13 @@ reset_bucket:
   name: Reset bucket
   description: Reset the bucket to 0. Call this once watering is completed.
   target:
-      entity:
-        integration: irrigation_estimator
-        domain: sensor
+    entity:
+      integration: irrigation_estimator
+      domain: sensor
 force_daily_update:
   name: Force daily update
   description: Force ET0 calculation, reset of environmental trackers and update of bucket and run time.
   target:
-   entity:
-    integration: irrigation_estimator
-    domain: sensor
+    entity:
+      integration: irrigation_estimator
+      domain: sensor
