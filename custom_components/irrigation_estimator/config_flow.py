@@ -10,7 +10,7 @@ from homeassistant.const import (
     CONF_NAME,
     PRECISION_TENTHS,
     PRECISION_WHOLE,
-    TIME_SECONDS,
+    UnitOfTime,
     Platform,
     UnitOfLength,
 )
@@ -124,7 +124,7 @@ OPTIONS_SCHEMA = vol.Schema(
             selector.NumberSelectorConfig(
                 min=0,
                 step=PRECISION_WHOLE,
-                unit_of_measurement=TIME_SECONDS,
+                unit_of_measurement=UnitOfTime.SECONDS,
                 mode=selector.NumberSelectorMode.BOX,
             ),
         ),

@@ -21,7 +21,7 @@ def get_config_value(config_entry: ConfigEntry, key: str) -> Any:
 class MinMaxAvgTracker:
     """Tracking min, max and avg of a sensor."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the tracker."""
         self.min = None
         self.max = None
@@ -29,7 +29,7 @@ class MinMaxAvgTracker:
         self._accumulator = 0
         self._count = 0
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset values, restart tracking."""
         self.min = None
         self.max = None
@@ -37,7 +37,7 @@ class MinMaxAvgTracker:
         self._accumulator = 0
         self._count = 0
 
-    def update(self, new_value):
+    def update(self, new_value) -> None:
         """Update with new value."""
         if self.min is None or self.min > new_value:
             self.min = new_value
@@ -106,7 +106,7 @@ def estimate_fao56_daily(
     wind_m_s,  # 24h avg wind speed [m/s]
     sol_rad=None,  # solar radioation [W*m-2]
     sunshine_hours=None,  # 24h sunshine hours
-):
+) -> float:
     """Estimate fao56 from weather."""
     temp_c_mean = aquacropeto.daily_mean_t(temp_c_min, temp_c_max)
 

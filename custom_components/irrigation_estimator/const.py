@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "irrigation_estimator"
 NAME = "Irrigation Estimator"
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 ISSUE_URL = "https://github.com/rondoval/IrrigationEstimator/issues"
 

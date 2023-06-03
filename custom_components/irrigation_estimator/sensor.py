@@ -4,7 +4,7 @@ from __future__ import annotations
 import datetime
 import logging
 from functools import partial
-
+from enum import IntFlag
 from homeassistant.components.recorder import get_instance, history
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -107,9 +107,14 @@ async def async_setup_entry(
     )
 
     platform = entity_platform.async_get_current_platform()
-    platform.async_register_entity_service(SERVICE_RESET_BUCKET, {}, "async_reset")
     platform.async_register_entity_service(
-        SERVICE_FORCE_DAILY_UPDATE, {}, "async_update_daily"
+        SERVICE_RESET_BUCKET, {}, "async_reset", [IrrigationEntityFeature.RESET]
+    )
+    platform.async_register_entity_service(
+        SERVICE_FORCE_DAILY_UPDATE,
+        {},
+        "async_update_daily",
+        [IrrigationEntityFeature.UPDATE],
     )
 
 
@@ -380,10 +385,18 @@ class CalculationEngine:
                 tracker.load_history(filter_history.get(entity_id, []))
 
 
+class IrrigationEntityFeature(IntFlag):
+    """Services are not supported by all sensors"""
+
+    RESET = 1
+    UPDATE = 2
+
+
 class IrrigationSensor(RestoreSensor, SensorEntity):
     """Smart Irrigation Entity."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature(0)
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_icon = ICON
@@ -415,19 +428,12 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
         """Handle updated data from the coordinator."""
         self.async_write_ha_state()
 
-    @callback
-    def async_reset(self):
-        """Do nothing."""
-
-    @callback
-    def async_update_daily(self):
-        """Do nothing."""
-
 
 class EvapotranspirationSensor(IrrigationSensor):
     """Daily evapotranspiration."""
 
     _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
+    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature.UPDATE
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
@@ -486,8 +492,8 @@ class EvapotranspirationSensor(IrrigationSensor):
 
     @callback
     def async_update_daily(self):
+        """Recalculate ET0 and reset trackers"""
         self.coordinator.update_daily(None)
-        return super().async_update_daily()
 
 
 class DailyBucketDelta(IrrigationSensor):
@@ -529,6 +535,7 @@ class CumulativeBucket(IrrigationSensor):
     """Daily cumulative bucket."""
 
     _attr_native_unit_of_measurement = UnitOfLength.MILLIMETERS
+    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature.RESET
 
     def __init__(
         self,
@@ -564,6 +571,7 @@ class CumulativeRunTime(IrrigationSensor):
 
     _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_device_class = SensorDeviceClass.DURATION
+    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature.RESET
 
     def __init__(
         self, coordinator: CalculationEngine, config_entry: ConfigEntry
