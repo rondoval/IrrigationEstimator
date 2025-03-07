@@ -3,10 +3,9 @@
 from datetime import datetime, timedelta
 from typing import Any
 
+import aquacropeto
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-
-import aquacropeto
 
 from .const import CONVERT_W_M2_TO_MJ_M2_DAY
 
@@ -85,8 +84,9 @@ class SunshineTracker:
     def update(self, radiation: float) -> None:
         """Update counters using a new value."""
         if self._timestamp is not None and radiation >= self._radiation_watermark:
-            self.sunshine_hours += datetime.now() - self._timestamp
-        self._timestamp = datetime.now()
+            self.sunshine_hours += datetime.now(
+                tz=datetime.UTC) - self._timestamp
+        self._timestamp = datetime.now(tz=datetime.UTC)
 
     def get_hours(self) -> float:
         """Return amount of sunshine hours counted."""

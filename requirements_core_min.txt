@@ -1,3 +1,4 @@
 # https://github.com/home-assistant/core/blob/2024.4.1/homeassistant/components/frontend/manifest.json
 home-assistant-frontend==20250306.0
 homeassistant==2025.3.1
+aquacropeto==0.1.1

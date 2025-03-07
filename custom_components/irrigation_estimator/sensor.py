@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import datetime
-import logging
-from functools import partial
 from enum import IntFlag
+from functools import partial
+import logging
+
 from homeassistant.components.recorder import get_instance, history
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -20,11 +21,11 @@ from homeassistant.const import (
     CONF_LONGITUDE,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
-    UnitOfTime,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_platform
@@ -34,13 +35,13 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
 )
+import homeassistant.util.dt as dt_util
 from homeassistant.util.unit_conversion import (
     DistanceConverter,
     PressureConverter,
     SpeedConverter,
     TemperatureConverter,
 )
-import homeassistant.util.dt as dt_util
 
 from .const import (
     ATTR_MAX_RH,
@@ -76,8 +77,8 @@ from .const import (
     ICON,
     OPTION_CUMULATIVE,
     OPTION_HOURLY,
-    SERVICE_RESET_BUCKET,
     SERVICE_FORCE_DAILY_UPDATE,
+    SERVICE_RESET_BUCKET,
 )
 from .helpers import (
     MinMaxAvgTracker,
@@ -108,7 +109,8 @@ async def async_setup_entry(
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
-        SERVICE_RESET_BUCKET, {}, "async_reset", [IrrigationEntityFeature.RESET]
+        SERVICE_RESET_BUCKET, {}, "async_reset", [
+            IrrigationEntityFeature.RESET]
     )
     platform.async_register_entity_service(
         SERVICE_FORCE_DAILY_UPDATE,
@@ -141,7 +143,8 @@ class CalculationEngine:
         self._solar_radiation_threshold = get_config_value(
             config_entry, CONF_SOLAR_RADIATION_THRESHOLD
         )
-        self.maximum_duration = get_config_value(config_entry, CONF_MAXIMUM_DURATION)
+        self.maximum_duration = get_config_value(
+            config_entry, CONF_MAXIMUM_DURATION)
         self._wind_meas_height = get_config_value(
             config_entry, CONF_WIND_MEASUREMENT_HEIGHT
         )
@@ -166,7 +169,8 @@ class CalculationEngine:
             ),
         }
 
-        self.sunshine_tracker = SunshineTracker(self._solar_radiation_threshold)
+        self.sunshine_tracker = SunshineTracker(
+            self._solar_radiation_threshold)
         self.solar_radiation_tracker = MinMaxAvgTracker()
         self.temp_tracker = MinMaxAvgTracker()
         self.wind_tracker = MinMaxAvgTracker()
@@ -259,16 +263,17 @@ class CalculationEngine:
         value = float(new_state.state)
         unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
 
-        # TODO ugly
         if entity_id == self._sensors[CONF_SENSOR_TEMPERATURE]:
             self.temp_tracker.update(
-                TemperatureConverter.convert(value, unit, UnitOfTemperature.CELSIUS)
+                TemperatureConverter.convert(
+                    value, unit, UnitOfTemperature.CELSIUS)
             )
         elif entity_id == self._sensors[CONF_SENSOR_HUMIDITY]:
             self.rh_tracker.update(value)
         elif entity_id == self._sensors[CONF_SENSOR_WINDSPEED]:
             self.wind_tracker.update(
-                SpeedConverter.convert(value, unit, UnitOfSpeed.METERS_PER_SECOND)
+                SpeedConverter.convert(
+                    value, unit, UnitOfSpeed.METERS_PER_SECOND)
             )
         elif entity_id == self._sensors[CONF_SENSOR_PRESSURE]:
             self.pressure_tracker.update(
@@ -291,7 +296,8 @@ class CalculationEngine:
 
     @callback
     def _update_hourly(self, _):
-        new_state = self.hass.states.get(self._sensors[CONF_SENSOR_PRECIPITATION])
+        new_state = self.hass.states.get(
+            self._sensors[CONF_SENSOR_PRECIPITATION])
         if new_state is not None and new_state.state not in (
             STATE_UNAVAILABLE,
             STATE_UNKNOWN,
@@ -333,7 +339,7 @@ class CalculationEngine:
             ]
         ):
             eto = estimate_fao56_daily(
-                datetime.datetime.now().timetuple().tm_yday,
+                datetime.datetime.now(tz=datetime.UTC).timetuple().tm_yday,
                 self._latitude,
                 self._elevation,
                 self._wind_meas_height,
@@ -396,7 +402,8 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
     """Smart Irrigation Entity."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature(0)
+    _attr_supported_features: IrrigationEntityFeature = IrrigationEntityFeature(
+        0)
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_icon = ICON
@@ -420,7 +427,8 @@ class IrrigationSensor(RestoreSensor, SensorEntity):
         """When entity is added to hass."""
         await super().async_added_to_hass()
         self.async_on_remove(
-            self.coordinator.async_add_listener(self._handle_coordinator_update)
+            self.coordinator.async_add_listener(
+                self._handle_coordinator_update)
         )
 
     @callback
@@ -481,8 +489,10 @@ class EvapotranspirationSensor(IrrigationSensor):
 
         if data := await self.async_get_last_state():
             # No need to restore avg from history for these
-            self.coordinator.temp_tracker.min = data.attributes.get(ATTR_MIN_TEMP)
-            self.coordinator.temp_tracker.max = data.attributes.get(ATTR_MAX_TEMP)
+            self.coordinator.temp_tracker.min = data.attributes.get(
+                ATTR_MIN_TEMP)
+            self.coordinator.temp_tracker.max = data.attributes.get(
+                ATTR_MAX_TEMP)
             self.coordinator.rh_tracker.min = data.attributes.get(ATTR_MIN_RH)
             self.coordinator.rh_tracker.max = data.attributes.get(ATTR_MAX_RH)
             self.coordinator.sunshine_tracker.sunshine_hours = datetime.timedelta(
@@ -528,7 +538,8 @@ class DailyBucketDelta(IrrigationSensor):
             self.coordinator.bucket_delta = data.native_value
 
         if data := await self.async_get_last_state():
-            self.coordinator.precipitation = data.attributes.get(ATTR_PRECIPITATION)
+            self.coordinator.precipitation = data.attributes.get(
+                ATTR_PRECIPITATION)
 
 
 class CumulativeBucket(IrrigationSensor):
