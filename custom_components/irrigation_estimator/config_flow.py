@@ -4,15 +4,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
-import voluptuous as vol
 from homeassistant.const import (
-    AREA_SQUARE_METERS,
     CONF_NAME,
     PRECISION_TENTHS,
     PRECISION_WHOLE,
-    UnitOfTime,
     Platform,
+    UnitOfArea,
     UnitOfLength,
+    UnitOfTime,
 )
 from homeassistant.helpers import selector
 from homeassistant.helpers.schema_config_entry_flow import (
@@ -20,6 +19,7 @@ from homeassistant.helpers.schema_config_entry_flow import (
     SchemaFlowFormStep,
     SchemaFlowMenuStep,
 )
+import voluptuous as vol
 
 from .const import (
     CONF_ACCURATE_SOLAR_RADIATION,
@@ -62,7 +62,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(CONF_AREA): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 step=PRECISION_TENTHS,
-                unit_of_measurement=AREA_SQUARE_METERS,
+                unit_of_measurement=UnitOfArea.SQUARE_METERS,
                 mode=selector.NumberSelectorMode.BOX,
             ),
         ),
