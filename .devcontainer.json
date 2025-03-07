@@ -19,14 +19,6 @@
     }
   },
   "customizations": {
-    "extensions": [
-      "charliermarsh.ruff",
-      "ms-python.python",
-      "github.vscode-pull-request-github",
-      "ryanluker.vscode-coverage-gutters",
-      "ms-python.vscode-pylance",
-      "GitHub.copilot"
-    ],
     "vscode": {
       "settings": {
         "python.pythonPath": "/usr/local/bin/python",
@@ -50,7 +42,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-vscode.makefile-tools",
-        "ryanluker.vscode-coverage-gutters"
+        "ryanluker.vscode-coverage-gutters",
+        "charliermarsh.ruff"
       ]
     }
   },
