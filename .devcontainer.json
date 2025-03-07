@@ -1,7 +1,7 @@
 {
   "name": "rondoval/IrrigationEstimator",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
-  "postCreateCommand": "scripts/setup",
+  "postCreateCommand": "bash scripts/setup",
   "forwardPorts": [
     8123
   ],
