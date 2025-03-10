@@ -1,6 +1,6 @@
 """Helper functions."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import aquacropeto
@@ -85,8 +85,8 @@ class SunshineTracker:
         """Update counters using a new value."""
         if self._timestamp is not None and radiation >= self._radiation_watermark:
             self.sunshine_hours += datetime.now(
-                tz=datetime.UTC) - self._timestamp
-        self._timestamp = datetime.now(tz=datetime.UTC)
+                tz=UTC) - self._timestamp
+        self._timestamp = datetime.now(tz=UTC)
 
     def get_hours(self) -> float:
         """Return amount of sunshine hours counted."""
